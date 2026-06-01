@@ -39,8 +39,8 @@ The Thermocouple Dashboard is a Python Dash web application for monitoring MCC E
 - OpenSSL for generating self-signed certificates in local HTTPS setups. 
 
 ### Hardware
-- MCC E-TC thermocouple device. [file:131]
-- Device IP address `192.168.10.101`. [file:131]
+- MCC E-TC thermocouple device. 
+- Device IP address `192.168.10.101`. 
 - The application uses channels 0, 1, and 2 out of 8 available channels. 
 
 ---
@@ -138,19 +138,19 @@ Temperature recording files are stored in `/storage/recordings/` using the namin
 
 ```text
 TUS_F{furnace}_{YYMMDD}_{HHMM}.txt
-``` [file:131]
+``` 
 
 Columns are tab-separated:
 
 ```text
 hour    minute  second  channel_0   channel_1   channel_2
-``` [file:131]
+``` 
 
 Example:
 ```text
 14  23  45  75.123  76.456  74.890
 14  23  46  75.145  76.478  74.912
-``` [file:131]
+``` 
 
 ### Configuration Format
 Configuration is stored as JSON for furnace number and bound values. 
