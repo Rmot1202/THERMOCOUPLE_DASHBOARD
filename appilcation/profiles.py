@@ -17,14 +17,9 @@ class ProfileManager:
 
         filepath = os.path.join(self.profiles_dir, f"{safe_name}.json")
 
-        profile_data = {
-            "name": profile_name,
-            "created": datetime.now().isoformat(),
-            "config": config,
-        }
-
-        with open(filepath, "w") as f:
-            json.dump(profile_data, f, indent=2)
+        # Save the provided config as the profile JSON payload (flat config dict)
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=2)
 
         return filepath
 
@@ -36,9 +31,10 @@ class ProfileManager:
             return None
 
         try:
-            with open(filepath, "r") as f:
-                profile_data = json.load(f)
-            return profile_data.get("config")
+            with open(filepath, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            # Profiles are stored as the raw config dict
+            return data
         except Exception as e:
             print(f"Error loading profile: {e}")
             return None

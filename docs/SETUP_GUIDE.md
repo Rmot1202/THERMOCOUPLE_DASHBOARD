@@ -111,22 +111,18 @@ Navigate to the "Configuration" panel in the web interface:
 - **Lower Bound (°C)**: Alarm threshold (low)
 - **Upper Bound (°C)**: Alarm threshold (high)
 
-Settings are saved automatically to `thermocouple_config.json/config.json`.
+Settings are saved automatically to `storage/profiles/current_config.json` by default (or `$STORAGE_PATH/profiles/current_config.json` when `STORAGE_PATH` is set).
 
 ### Environment Variables
 
-Create `.env` file in project root:
+Create an optional `.env` file in the project root to override storage or proxy settings used by the app:
 
 ```env
-# Device Configuration
-MCC_DEVICE_IP=192.168.10.101
+# Storage base path used by the app (defaults to ./storage)
+STORAGE_PATH=./storage
 
-# Application
-DASH_PORT=8050
-POLLING_INTERVAL=1000
-
-# Storage (Docker)
-STORAGE_PATH=/storage
+# Base pathname for Dash when behind a proxy (optional)
+DASH_BASE_PATHNAME=/
 ```
 
 ---
@@ -137,7 +133,7 @@ STORAGE_PATH=/storage
 
 Temperature data is stored as TUS (LabVIEW-compatible) text files:
 
-**Location**: `/storage/recordings/` (or `./recordings/` locally)
+**Location**: `$STORAGE_PATH/recordings/` (or `./storage/recordings/` locally)
 
 **Filename Format**: `TUS_F{furnace}_{YYMMDD}_{HHMM}.txt`
 
@@ -151,7 +147,7 @@ Temperature data is stored as TUS (LabVIEW-compatible) text files:
 
 Profiles are stored as JSON:
 
-**Location**: `/storage/profiles/` or `thermocouple_config.json/`
+**Location**: `$STORAGE_PATH/profiles/` (or `./storage/profiles/` locally)
 
 **Example**:
 ```json
