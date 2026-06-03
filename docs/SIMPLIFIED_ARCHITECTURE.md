@@ -63,8 +63,14 @@ Thermocouple_dashboard/
 │   ├── app.py                       # Dash frontend + callbacks
 │   ├── config.py                    # Constants & settings
 │   ├── hardware.py                  # MCC device interface
-│   ├── profiles.py                  # JSON profile management
-│   └── test_hardware.py             # Hardware tests
+│   └── profiles.py                  # JSON profile management
+│
+├── tests/                           # Automated and hardware tests
+│   ├── test_app_helpers.py
+│   ├── test_dash_callbacks.py
+│   ├── test_hardware.py             # Manual MCC hardware test script
+│   ├── test_hardware_wrapper.py
+│   └── test_profiles.py
 │
 ├── storage/                         # Docker volumes (not in git)
 │   ├── recordings/                  # TUS temperature files
@@ -316,7 +322,7 @@ See [SETUP_GUIDE.md](SETUP_GUIDE.md) for common issues.
 
 **Test hardware connection**:
 ```powershell
-python appilcation/test_hardware.py
+.\.venv\Scripts\python.exe tests/test_hardware.py
 ```
 
 **Check logs** (Docker):

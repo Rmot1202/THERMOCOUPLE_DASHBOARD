@@ -166,7 +166,7 @@ Profiles are stored as JSON:
 ### Test MCC Device Connection
 
 ```powershell
-python appilcation/test_hardware.py
+.\.venv\Scripts\python.exe tests/test_hardware.py
 ```
 
 Expected output if connected:
@@ -201,7 +201,7 @@ If the MCC device is unavailable, the app automatically uses simulated data with
 
 ## Next Steps
 
-1. ✅ **Verify Hardware**: Run `test_hardware.py` to confirm MCC device connectivity
+1. ✅ **Verify Hardware**: Run `tests/test_hardware.py` to confirm MCC device connectivity
 2. 🎯 **Start Recording**: Use the web interface to begin monitoring
 3. 📊 **Download Data**: Use the download button to retrieve TUS files
 4. 🔒 **Deploy**: Configure HTTPS and deploy with Docker
@@ -210,5 +210,5 @@ If the MCC device is unavailable, the app automatically uses simulated data with
 
 ## Support
 
-- See [MCC_HARDWARE_GUIDE.md](../MCC_HARDWARE_GUIDE.md) for device specifications
+- See [MCC_HARDWARE_GUIDE.md](MCC_HARDWARE_GUIDE.md) for device specifications
 - See [SIMPLIFIED_ARCHITECTURE.md](SIMPLIFIED_ARCHITECTURE.md) for system design

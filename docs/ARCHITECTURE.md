@@ -20,7 +20,7 @@ The application source lives under `appilcation/`. The project root intentionall
 - `appilcation/config.py`: defaults, channel count, colors, polling interval, output directory
 - `appilcation/hardware.py`: MCC E-TC connection and simulated-data fallback
 - `appilcation/profiles.py`: profile JSON save/load/list/delete helpers
-- `appilcation/test_hardware.py`: command-line hardware test
+- `tests/test_hardware.py`: command-line hardware test
 
 ## Key Callbacks
 

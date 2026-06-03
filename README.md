@@ -72,8 +72,14 @@ Thermocouple_dashboard/
 │   ├── app.py                      # Dash frontend + callbacks
 │   ├── config.py                   # Configuration constants
 │   ├── hardware.py                 # MCC device interface
-│   ├── profiles.py                 # Profile management
-│   └── test_hardware.py
+│   └── profiles.py                 # Profile management
+│
+├── tests/                          # Automated and hardware tests
+│   ├── test_app_helpers.py
+│   ├── test_dash_callbacks.py
+│   ├── test_hardware.py            # Manual MCC hardware test script
+│   ├── test_hardware_wrapper.py
+│   └── test_profiles.py
 │
 ├── storage/                        # Docker volumes (not in git)
 │   ├── recordings/                 # TUS temperature files
@@ -179,7 +185,8 @@ The project is documented as production-ready with an NGINX reverse proxy and HT
 ## Documentation
 - [Simplified Architecture](docs/SIMPLIFIED_ARCHITECTURE.md) — system design and data flow. 
 - [Setup Guide](docs/SETUP_GUIDE.md) — installation and configuration. 
-- `MCC_HARDWARE_GUIDE.md` — device specifications, as referenced in the README. 
+- [Test Coverage Summary](docs/TESTS.md) — automated test command and test file summary.
+- [MCC Hardware Guide](docs/MCC_HARDWARE_GUIDE.md) — device setup and manual hardware checks.
 
 ---
 
@@ -204,9 +211,17 @@ pip install -r requirements.txt
 ``` 
 
 ### Run Tests
+From the `Thermocouple_dashboard` project root:
+
 ```powershell
-python appilcation/test_hardware.py
-``` 
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+To run the manual MCC hardware check:
+
+```powershell
+.\.venv\Scripts\python.exe tests/test_hardware.py
+```
 
 ### Modify App
 Edit `appilcation/app.py` and refresh the browser; hot reload is enabled during development. 

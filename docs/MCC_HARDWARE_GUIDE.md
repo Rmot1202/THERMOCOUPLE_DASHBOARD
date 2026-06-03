@@ -21,14 +21,14 @@ Leave it as `None` to auto-discover or use simulated data when hardware is unava
 Run:
 
 ```powershell
-python appilcation/test_hardware.py
+.\.venv\Scripts\python.exe tests/test_hardware.py
 ```
 
 Optional arguments:
 
 ```powershell
-python appilcation/test_hardware.py 192.168.1.100
-python appilcation/test_hardware.py 192.168.1.100 1
+.\.venv\Scripts\python.exe tests/test_hardware.py 192.168.1.100
+.\.venv\Scripts\python.exe tests/test_hardware.py 192.168.1.100 1
 ```
 
 The app reads channels `0`, `1`, and `2`.

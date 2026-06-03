@@ -39,7 +39,7 @@ This project includes focused automated tests for the parts that can break witho
 
 ## How to run tests
 
-From the repository root:
+From the `Thermocouple_dashboard` project root:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
