@@ -25,6 +25,7 @@ except ImportError:
     from hardware import MCCThermocouple
     from profiles import ProfileManager
 
+
 STORAGE_PATH = Path(os.getenv("STORAGE_PATH", "./storage"))
 RECORDINGS_DIR = STORAGE_PATH / "recordings"
 PROFILES_DIR = STORAGE_PATH / "profiles"
@@ -62,12 +63,6 @@ hardware = MCCThermocouple(device_ip=DEVICE_IP)
 
 
 def load_config():
-    """Load the persisted dashboard configuration.
-
-    Returns:
-        dict: The saved configuration merged over the application defaults.
-    """
-
     try:
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
             loaded = json.load(f)
@@ -83,23 +78,11 @@ def load_config():
 
 
 def save_config(cfg):
-    """Persist the active dashboard configuration.
-
-    Args:
-        cfg (dict): Configuration values to write as JSON.
-    """
-
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2)
 
 
 def list_profile_options():
-    """Build Dash dropdown options for saved furnace profiles.
-
-    Returns:
-        list[dict]: Options with display labels and profile filenames.
-    """
-
     options = []
     for path in sorted(PROFILES_DIR.glob("*.json")):
         if path.name == CONFIG_FILE.name:
@@ -117,15 +100,6 @@ def list_profile_options():
 
 
 def load_profile_file(filename):
-    """Load a furnace profile by filename.
-
-    Args:
-        filename (str): JSON profile filename under ``PROFILES_DIR``.
-
-    Returns:
-        dict: Profile values merged over the application defaults.
-    """
-
     path = PROFILES_DIR / filename
     if not path.exists():
         return DEFAULT_CONFIG.copy()
@@ -139,8 +113,6 @@ def load_profile_file(filename):
 
 
 def fmt_temp(value):
-    """Format a temperature value for display."""
-
     return f"{value:.3f}" if isinstance(value, (int, float)) else "--"
 
 
@@ -152,30 +124,14 @@ def unique_fractional_second(now_dt, last_ts):
 
 
 def simulate_values(count=3):
-    """Generate fallback thermocouple values when hardware is unavailable.
-
-    Args:
-        count (int, optional): Number of channels to simulate.
-
-    Returns:
-        list[float]: Simulated channel temperatures.
-    """
-
     try:
         return hardware._simulate(count)
     except Exception:
         import random
-
         return [72.0 + random.uniform(-1.0, 1.0) + i * 2 for i in range(count)]
 
 
 def read_live_temps():
-    """Read three thermocouple channels with simulation fallback.
-
-    Returns:
-        list[float | None]: Channel 1 through 3 temperatures.
-    """
-
     temps = hardware.read_channels([0, 1, 2]) if hardware.connected else simulate_values(3)
     if temps is None:
         temps = simulate_values(3)
@@ -187,20 +143,15 @@ def read_live_temps():
 
 
 def parse_furnace_id(value):
-    """Return a normalized furnace ID string (allows letters, e.g. '1A')."""
-
     if value in (None, ""):
         return str(DEFAULT_CONFIG.get("furnace_id", "1")).strip()
     return str(value).strip()
 
 
 def furnace_id_to_number(fid):
-    """Extract a numeric furnace index from an ID like '1A' or 'F2B', fallback to 1."""
     import re
-
     if fid in (None, ""):
         return int(DEFAULT_CONFIG.get("furnace_number", 1))
-
     text = str(fid)
     matches = re.findall(r"\d+", text)
     try:
@@ -210,15 +161,8 @@ def furnace_id_to_number(fid):
 
 
 def build_live_cfg(furnace, setpoint, lower, upper, y_min, y_max, sampling):
-    """Normalize live form values into a dashboard configuration.
-
-    Invalid sampling values and inverted y-axis bounds are reset to the
-    configured defaults.
-    """
-
     furnace_id = parse_furnace_id(furnace)
     furnace_num = furnace_id_to_number(furnace_id)
-
     cfg = {
         "furnace_id": furnace_id,
         "furnace_number": furnace_num,
@@ -229,42 +173,27 @@ def build_live_cfg(furnace, setpoint, lower, upper, y_min, y_max, sampling):
         "y_max": float(y_max) if y_max is not None else DEFAULT_CONFIG["y_max"],
         "sampling_frequency": float(sampling) if sampling is not None else DEFAULT_CONFIG["sampling_frequency"],
     }
-
     if cfg["sampling_frequency"] <= 0:
         cfg["sampling_frequency"] = DEFAULT_CONFIG["sampling_frequency"]
-
     if cfg["y_min"] >= cfg["y_max"]:
         cfg["y_min"] = DEFAULT_CONFIG["y_min"]
         cfg["y_max"] = DEFAULT_CONFIG["y_max"]
-
     return cfg
 
 
 def make_figure(store, cfg):
-    """Create the live temperature chart.
-
-    Args:
-        store (dict): Time-series values stored by Dash.
-        cfg (dict): Active furnace and graph configuration.
-
-    Returns:
-        plotly.graph_objects.Figure: Configured temperature chart.
-    """
-
     times = store.get("times", [])
     ch0 = store.get("ch0", [])
     ch1 = store.get("ch1", [])
     ch2 = store.get("ch2", [])
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=times, y=ch0, mode="lines", name="Channel 1", line=dict(color="#3b82f6", width=2)))
-    fig.add_trace(go.Scatter(x=times, y=ch1, mode="lines", name="Channel 2", line=dict(color="#ef4444", width=2)))
-    fig.add_trace(go.Scatter(x=times, y=ch2, mode="lines", name="Channel 3", line=dict(color="#a855f7", width=2)))
-
+    fig.add_trace(go.Scatter(x=times, y=ch0, mode="lines", name="Channel 0", line=dict(color="#3b82f6", width=2)))
+    fig.add_trace(go.Scatter(x=times, y=ch1, mode="lines", name="Channel 1", line=dict(color="#ef4444", width=2)))
+    fig.add_trace(go.Scatter(x=times, y=ch2, mode="lines", name="Channel 2", line=dict(color="#a855f7", width=2)))
     fig.add_hline(y=cfg["setpoint"], line_dash="dot", line_color="#ef4444", line_width=1)
     fig.add_hline(y=cfg["lower_bound"], line_dash="dot", line_color="#f59e0b", line_width=1)
     fig.add_hline(y=cfg["upper_bound"], line_dash="dot", line_color="#8b5cf6", line_width=1)
-
     fig.update_layout(
         height=GRAPH_HEIGHT,
         margin=dict(l=8, r=8, t=24, b=8),
@@ -288,11 +217,22 @@ def make_figure(store, cfg):
 loaded_cfg = load_config()
 
 app.layout = html.Div(
+    id="app-root",
     className="app-shell",
     children=[
         dcc.Store(id="data-store", data={"times": [], "ch0": [], "ch1": [], "ch2": []}),
         dcc.Store(id="recording-store", data={"active": False, "filename": None}),
         dcc.Store(id="save-file-store", data={"filename": None, "content": ""}),
+        dcc.Store(
+            id="timer-store",
+            data={
+                "duration_hours": None,
+                "target_ts": None,
+                "active": False,
+                "done": False,
+                "recording_started_ts": None,
+            },
+        ),
         dcc.Interval(
             id="interval",
             interval=int(1000 / max(0.1, loaded_cfg.get("sampling_frequency", 1.0))),
@@ -320,7 +260,7 @@ app.layout = html.Div(
                 html.Div(
                     className="brand",
                     children=[
-                        html.Div(className="brand-mark", children="T"),
+                        html.Div("CCAM", className="ccam-wordmark"),
                         html.Div(
                             children=[
                                 html.Div("Thermocouple Monitor", className="brand-title"),
@@ -344,7 +284,7 @@ app.layout = html.Div(
                 html.Div(
                     className="ccam-hero-content",
                     children=[
-                        html.Div("Thermocouple Monitor", className="ccam-hero-title"),
+                        html.Div("CCAM Thermocouple Monitor", className="ccam-hero-title"),
                         html.Div(
                             "Commonwealth Center for Advanced Manufacturing • Real-time furnace monitoring and recording",
                             className="ccam-hero-subtitle",
@@ -384,6 +324,11 @@ app.layout = html.Div(
                                             ],
                                         ),
                                     ],
+                                ),
+                                html.Div(
+                                    id="alert-summary",
+                                    className="alert-strip alert-info",
+                                    children="System status messages will appear here.",
                                 ),
                                 html.Div(
                                     [
@@ -525,6 +470,79 @@ app.layout = html.Div(
                         html.Section(
                             className="panel sidebar-panel",
                             children=[
+                                html.H3("Timer", className="side-title"),
+                                html.Div(
+                                    className="timer-controls-inline",
+                                    children=[
+                                        html.Div(
+                                            className="timer-field-group",
+                                            children=[
+                                                dbc.Label("Hours left", className="field-label"),
+                                                dbc.Input(
+                                                    id="timer-hours",
+                                                    type="number",
+                                                    min=0,
+                                                    step=0.1,
+                                                    placeholder="Hours",
+                                                    className="field-input timer-small-input",
+                                                ),
+                                            ],
+                                        ),
+                                        html.Div(
+                                            className="timer-field-group",
+                                            children=[
+                                                dbc.Label("Minutes", className="field-label"),
+                                                dbc.Input(
+                                                    id="timer-minutes",
+                                                    type="number",
+                                                    min=0,
+                                                    step=1,
+                                                    value=0,
+                                                    className="field-input timer-small-input",
+                                                ),
+                                            ],
+                                        ),
+                                        html.Div(
+                                            className="timer-field-group sampling-small-group",
+                                            children=[
+                                                dbc.Label("Sampling (Hz)", className="field-label"),
+                                                dbc.Input(
+                                                    id="cfg-sampling",
+                                                    type="number",
+                                                    value=loaded_cfg.get("sampling_frequency", DEFAULT_CONFIG["sampling_frequency"]),
+                                                    min=0.1,
+                                                    step=0.1,
+                                                    className="field-input timer-small-input",
+                                                ),
+                                            ],
+                                        ),
+                                        html.Div(
+                                            className="timer-button-group",
+                                            children=[
+                                                dbc.Button("Start Timer", id="btn-start-timer", color="success", className="action-btn", n_clicks=0),
+                                                dbc.Button("Stop Timer", id="btn-stop-timer", color="warning", className="action-btn", n_clicks=0),
+                                                dbc.Button("Reset Timer", id="btn-reset-timer", color="secondary", className="action-btn action-btn-secondary", n_clicks=0),
+                                            ],
+                                        ),
+                                    ],
+                                ),
+                                dbc.Checklist(
+                                    options=[
+                                        {"label": "Flash screen at timer end", "value": "screen"},
+                                        {"label": "Flash temperatures at setpoint", "value": "temp"},
+                                    ],
+                                    value=["screen", "temp"],
+                                    id="alert-options",
+                                    switch=True,
+                                    className="timer-checklist",
+                                ),
+                                html.Div(id="timer-readout", className="timer-readout", children="00:00:00"),
+                                html.Div(id="timer-subtext", className="timer-subtext", children="Elapsed: 00:00:00"),
+                            ],
+                        ),
+                        html.Section(
+                            className="panel sidebar-panel",
+                            children=[
                                 html.H3("Temperature Bounds", className="side-title"),
                                 dbc.Label("Setpoint (°C)", className="field-label"),
                                 dbc.Input(
@@ -552,25 +570,6 @@ app.layout = html.Div(
                                 ),
                             ],
                         ),
-                        html.Section(
-                            className="panel sidebar-panel",
-                            children=[
-                                html.H3("Sampling", className="side-title"),
-                                dbc.Label("Sampling Frequency (Hz)", className="field-label"),
-                                dbc.Input(
-                                    id="cfg-sampling",
-                                    type="number",
-                                    value=loaded_cfg.get("sampling_frequency", DEFAULT_CONFIG["sampling_frequency"]),
-                                    min=0.1,
-                                    step=0.1,
-                                    className="field-input",
-                                ),
-                                html.Div(
-                                    "Supports values below 1 Hz, such as 0.5 or 0.2.",
-                                    className="muted-line mt-2",
-                                ),
-                            ],
-                        ),
                     ],
                 ),
             ],
@@ -578,7 +577,7 @@ app.layout = html.Div(
         html.Footer(
             className="footer",
             children=[
-                html.Div("Thermocouple Dashboard v2.0", className="footer-left"),
+                html.Div("Thermocouple Dashboard v2.5", className="footer-left"),
                 html.Div(id="device-info", className="footer-right"),
             ],
         ),
@@ -591,8 +590,6 @@ app.layout = html.Div(
     Input("cfg-sampling", "value"),
 )
 def update_interval_from_sampling(sampling):
-    """Convert a sampling frequency in hertz to a Dash interval."""
-
     hz = float(sampling) if sampling not in (None, "") else DEFAULT_CONFIG["sampling_frequency"]
     hz = max(0.1, hz)
     return int(1000 / hz)
@@ -613,8 +610,6 @@ def update_interval_from_sampling(sampling):
     prevent_initial_call=True,
 )
 def load_selected_profile(profile_filename):
-    """Populate dashboard controls from the selected profile."""
-
     if not profile_filename:
         raise PreventUpdate
 
@@ -635,6 +630,173 @@ def load_selected_profile(profile_filename):
 
 @app.callback(
     [
+        Output("btn-start", "disabled"),
+        Output("btn-stop", "disabled"),
+        Output("rec-status", "children"),
+        Output("rec-file", "children"),
+        Output("recording-store", "data"),
+        Output("timer-store", "data"),
+    ],
+    Input("btn-start", "n_clicks"),
+    Input("btn-stop", "n_clicks"),
+    State("cfg-furnace", "value"),
+    State("recording-store", "data"),
+    State("timer-store", "data"),
+    prevent_initial_call=True,
+)
+def handle_recording(start_n, stop_n, furnace, rec_data, timer_data):
+    if not ctx.triggered_id:
+        raise PreventUpdate
+
+    rec_data = rec_data or {"active": False, "filename": None}
+    timer_data = timer_data or {
+        "duration_hours": None,
+        "target_ts": None,
+        "active": False,
+        "done": False,
+        "recording_started_ts": None,
+    }
+    button = ctx.triggered_id
+
+    if button == "btn-start":
+        furnace_id = parse_furnace_id(furnace)
+        timestamp = datetime.now().strftime("%y%m%d_%H%M%S")
+        safe_id = furnace_id.replace(" ", "").upper()
+        filename = f"TUS_F{safe_id}_{timestamp}.txt"
+        filepath = RECORDINGS_DIR / filename
+
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write("# FurnaceID\tHour\tMinute\tSecond\tChannel1\tChannel2\tChannel3\tReserved\n")
+
+        rec_data["active"] = True
+        rec_data["filename"] = filename
+        rec_data["last_ts"] = None
+
+        if not timer_data.get("recording_started_ts"):
+            timer_data["recording_started_ts"] = datetime.now().timestamp()
+
+        return True, False, "Status: Recording", f"File: {filename}", rec_data, timer_data
+
+    if button == "btn-stop":
+        rec_data["active"] = False
+        timer_data["active"] = False
+        timer_data["target_ts"] = None
+        filename = rec_data.get("filename", "unknown")
+        return False, True, "Status: Idle", f"Saved: {filename}", rec_data, timer_data
+
+    raise PreventUpdate
+
+
+@app.callback(
+    Output("timer-store", "data", allow_duplicate=True),
+    Input("btn-start-timer", "n_clicks"),
+    Input("btn-stop-timer", "n_clicks"),
+    Input("btn-reset-timer", "n_clicks"),
+    State("timer-hours", "value"),
+    State("timer-minutes", "value"),
+    State("timer-store", "data"),
+    prevent_initial_call=True,
+)
+def control_timer(start_clicks, stop_clicks, reset_clicks, timer_hours, timer_minutes, timer_data):
+    if not ctx.triggered_id:
+        raise PreventUpdate
+
+    timer_data = timer_data or {
+        "duration_hours": None,
+        "target_ts": None,
+        "active": False,
+        "done": False,
+        "recording_started_ts": None,
+    }
+
+    if ctx.triggered_id == "btn-start-timer":
+        now_ts = datetime.now().timestamp()
+        hours = float(timer_hours or 0)
+        minutes = float(timer_minutes or 0)
+        total_seconds = int(hours * 3600 + minutes * 60)
+
+        if total_seconds <= 0:
+            raise PreventUpdate
+
+        if not timer_data.get("recording_started_ts"):
+            timer_data["recording_started_ts"] = now_ts
+
+        timer_data["duration_hours"] = round(total_seconds / 3600.0, 3)
+        timer_data["target_ts"] = now_ts + total_seconds
+        timer_data["active"] = True
+        timer_data["done"] = False
+        return timer_data
+
+    if ctx.triggered_id == "btn-stop-timer":
+        timer_data["active"] = False
+        timer_data["target_ts"] = None
+        timer_data["done"] = False
+        return timer_data
+
+    if ctx.triggered_id == "btn-reset-timer":
+        return {
+            "duration_hours": None,
+            "target_ts": None,
+            "active": False,
+            "done": False,
+            "recording_started_ts": None,
+        }
+
+    raise PreventUpdate
+
+
+@app.callback(
+    Output("save-modal", "is_open"),
+    Input("btn-save-as", "n_clicks"),
+    Input("save-modal-cancel", "n_clicks"),
+    Input("save-modal-confirm", "n_clicks"),
+    State("save-modal", "is_open"),
+    prevent_initial_call=True,
+)
+def toggle_save_modal(btn_save, btn_cancel, btn_confirm, is_open):
+    trigger = ctx.triggered_id
+    if trigger == "btn-save-as":
+        return True
+    if trigger in ("save-modal-cancel", "save-modal-confirm"):
+        return False
+    return is_open
+
+
+@app.callback(
+    [
+        Output("save-file-store", "data"),
+        Output("profile-select", "options"),
+    ],
+    Input("save-modal-confirm", "n_clicks"),
+    State("cfg-furnace", "value"),
+    State("cfg-setpoint", "value"),
+    State("cfg-lower", "value"),
+    State("cfg-upper", "value"),
+    State("cfg-ymin", "value"),
+    State("cfg-ymax", "value"),
+    State("cfg-sampling", "value"),
+    prevent_initial_call=True,
+)
+def prepare_save_as_with_config(n, furnace, setpoint, lower, upper, y_min, y_max, sampling):
+    files = sorted(RECORDINGS_DIR.glob("TUS_*.txt"), key=lambda x: x.stat().st_mtime, reverse=True)
+    if not files:
+        return {"filename": None, "content": ""}, list_profile_options()
+
+    cfg = build_live_cfg(furnace, setpoint, lower, upper, y_min, y_max, sampling)
+    save_config(cfg)
+
+    profile_name = f"furnace_{cfg['furnace_id']}"
+    profile_manager.save_profile(profile_name, cfg)
+
+    latest = files[0]
+    with open(latest, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    return {"filename": latest.name, "content": content}, list_profile_options()
+
+
+@app.callback(
+    [
         Output("temp-0", "children"),
         Output("temp-1", "children"),
         Output("temp-2", "children"),
@@ -650,6 +812,15 @@ def load_selected_profile(profile_filename):
         Output("rec-status", "children"),
         Output("rec-file", "children"),
         Output("recording-store", "data"),
+        Output("timer-readout", "children"),
+        Output("timer-subtext", "children"),
+        Output("alert-summary", "children"),
+        Output("alert-summary", "className"),
+        Output("app-root", "className"),
+        Output("temp-0", "className"),
+        Output("temp-1", "className"),
+        Output("temp-2", "className"),
+        Output("timer-store", "data"),
     ],
     Input("interval", "n_intervals"),
     State("cfg-furnace", "value"),
@@ -661,14 +832,10 @@ def load_selected_profile(profile_filename):
     State("cfg-sampling", "value"),
     State("data-store", "data"),
     State("recording-store", "data"),
+    State("timer-store", "data"),
+    State("alert-options", "value"),
 )
-def update_temps(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, store, rec_data):
-    """Refresh the dashboard with new temperature readings.
-
-    The callback updates display values, graph data, hardware status, and
-    appends a row to the active recording file when recording is enabled.
-    """
-
+def update_temps(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, store, rec_data, timer_data, alert_options):
     now_dt = datetime.now()
     now = now_dt.strftime("%H:%M:%S")
     safe_temps = read_live_temps()
@@ -740,8 +907,79 @@ def update_temps(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, sto
 
     rec_status = "Status: Recording" if rec_data and rec_data.get("active") else "Status: Idle"
     rec_file = f"File: {rec_data.get('filename')}" if rec_data and rec_data.get("filename") else ""
-
     machine_label = f"Furnace {live_cfg.get('furnace_id', live_cfg.get('furnace_number'))}"
+
+    timer_data = timer_data or {
+        "duration_hours": None,
+        "target_ts": None,
+        "active": False,
+        "done": False,
+        "recording_started_ts": None,
+    }
+    alert_options = alert_options or []
+
+    timer_readout = "00:00:00"
+    timer_subtext = "Elapsed: 00:00:00"
+    alert_text = "System status messages will appear here."
+    alert_class = "alert-strip alert-info"
+    app_class = "app-shell"
+
+    temp0_class = "temp-value temp-blue"
+    temp1_class = "temp-value temp-red"
+    temp2_class = "temp-value temp-purple"
+
+    started_ts = timer_data.get("recording_started_ts")
+    if started_ts:
+        elapsed = max(0, int(now_dt.timestamp() - float(started_ts)))
+        e_h = elapsed // 3600
+        e_m = (elapsed % 3600) // 60
+        e_s = elapsed % 60
+        timer_subtext = f"Elapsed: {e_h:02d}:{e_m:02d}:{e_s:02d}"
+
+    if timer_data.get("active") and timer_data.get("target_ts"):
+        remaining = max(0, float(timer_data["target_ts"]) - now_dt.timestamp())
+        r_h = int(remaining // 3600)
+        r_m = int((remaining % 3600) // 60)
+        r_s = int(remaining % 60)
+        timer_readout = f"{r_h:02d}:{r_m:02d}:{r_s:02d}"
+        if remaining <= 0:
+            timer_data["active"] = False
+            timer_data["done"] = True
+    elif started_ts:
+        timer_readout = "REC"
+
+    ch0_hit = safe_temps[0] is not None and safe_temps[0] >= live_cfg["setpoint"]
+    ch1_hit = safe_temps[1] is not None and safe_temps[1] >= live_cfg["setpoint"]
+    ch2_hit = safe_temps[2] is not None and safe_temps[2] >= live_cfg["setpoint"]
+
+    reached_channels = []
+    if ch0_hit:
+        reached_channels.append("Channel 0")
+    if ch1_hit:
+        reached_channels.append("Channel 1")
+    if ch2_hit:
+        reached_channels.append("Channel 2")
+
+    if timer_data.get("done"):
+        alert_text = "Timer reached. Review next step or start a new timer."
+        alert_class = "alert-strip alert-warning"
+        if "screen" in alert_options:
+            app_class = "app-shell flash-screen"
+
+    if reached_channels:
+        alert_text = f"Setpoint reached: {', '.join(reached_channels)}"
+        alert_class = "alert-strip alert-warning"
+        if "temp" in alert_options:
+            if ch0_hit:
+                temp0_class += " flash-temp"
+            if ch1_hit:
+                temp1_class += " flash-temp"
+            if ch2_hit:
+                temp2_class += " flash-temp"
+
+    if timer_data.get("done") and reached_channels:
+        alert_text = f"Timer reached. Setpoint reached: {', '.join(reached_channels)}"
+        alert_class = "alert-strip alert-warning"
 
     return (
         fmt_temp(safe_temps[0]),
@@ -759,106 +997,16 @@ def update_temps(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, sto
         rec_status,
         rec_file,
         rec_data or {"active": False, "filename": None},
+        timer_readout,
+        timer_subtext,
+        alert_text,
+        alert_class,
+        app_class,
+        temp0_class,
+        temp1_class,
+        temp2_class,
+        timer_data,
     )
-
-
-@app.callback(
-    [
-        Output("btn-start", "disabled"),
-        Output("btn-stop", "disabled"),
-        Output("rec-status", "children"),
-        Output("rec-file", "children"),
-        Output("recording-store", "data"),
-    ],
-    Input("btn-start", "n_clicks"),
-    Input("btn-stop", "n_clicks"),
-    State("cfg-furnace", "value"),
-    State("recording-store", "data"),
-    prevent_initial_call=True,
-)
-def handle_recording(start_n, stop_n, furnace, rec_data):
-    """Start or stop TUS recording based on the triggering button."""
-
-    if not ctx.triggered_id:
-        raise PreventUpdate
-
-    rec_data = rec_data or {"active": False, "filename": None}
-    button = ctx.triggered_id
-
-    if button == "btn-start":
-        furnace_id = parse_furnace_id(furnace)
-        timestamp = datetime.now().strftime("%y%m%d_%H%M%S")
-        safe_id = furnace_id.replace(" ", "").upper()
-        filename = f"TUS_F{safe_id}_{timestamp}.txt"
-        filepath = RECORDINGS_DIR / filename
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write("# TUS Recording\n")
-            f.write("# FurnaceID\tHour\tMinute\tSecond\tChannel1\tChannel2\tChannel3\tReserved\n")
-        rec_data["active"] = True
-        rec_data["filename"] = filename
-        rec_data["last_ts"] = None
-        return True, False, "Status: Recording", f"File: {filename}", rec_data
-
-    if button == "btn-stop":
-        rec_data["active"] = False
-        filename = rec_data.get("filename", "unknown")
-        return False, True, "Status: Idle", f"Saved: {filename}", rec_data
-
-    raise PreventUpdate
-
-
-@app.callback(
-    Output("save-modal", "is_open"),
-    Input("btn-save-as", "n_clicks"),
-    Input("save-modal-cancel", "n_clicks"),
-    Input("save-modal-confirm", "n_clicks"),
-    State("save-modal", "is_open"),
-    prevent_initial_call=True,
-)
-def toggle_save_modal(btn_save, btn_cancel, btn_confirm, is_open):
-    """Open or close the Save As confirmation modal."""
-
-    trigger = ctx.triggered_id
-    if trigger == "btn-save-as":
-        return True
-    if trigger in ("save-modal-cancel", "save-modal-confirm"):
-        return False
-    return is_open
-
-
-@app.callback(
-    [
-        Output("save-file-store", "data"),
-        Output("profile-select", "options"),
-    ],
-    Input("save-modal-confirm", "n_clicks"),
-    State("cfg-furnace", "value"),
-    State("cfg-setpoint", "value"),
-    State("cfg-lower", "value"),
-    State("cfg-upper", "value"),
-    State("cfg-ymin", "value"),
-    State("cfg-ymax", "value"),
-    State("cfg-sampling", "value"),
-    prevent_initial_call=True,
-)
-def prepare_save_as_with_config(n, furnace, setpoint, lower, upper, y_min, y_max, sampling):
-    """Prepare the latest recording and persist the active profile."""
-
-    files = sorted(RECORDINGS_DIR.glob("TUS_*.txt"), key=lambda x: x.stat().st_mtime, reverse=True)
-    if not files:
-        return {"filename": None, "content": ""}, list_profile_options()
-
-    cfg = build_live_cfg(furnace, setpoint, lower, upper, y_min, y_max, sampling)
-    save_config(cfg)
-
-    profile_name = f"furnace_{cfg['furnace_id']}"
-    profile_manager.save_profile(profile_name, cfg)
-
-    latest = files[0]
-    with open(latest, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    return {"filename": latest.name, "content": content}, list_profile_options()
 
 
 clientside_callback(
@@ -911,6 +1059,7 @@ clientside_callback(
     Input("save-file-store", "data"),
     prevent_initial_call=True,
 )
+
 
 if __name__ == "__main__":
     if not hardware.connected:
