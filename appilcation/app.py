@@ -132,14 +132,22 @@ def simulate_values(count=3):
 
 
 def read_live_temps():
-    temps = hardware.read_channels([0, 1, 2]) if hardware.connected else simulate_values(3)
-    if temps is None:
-        temps = simulate_values(3)
-    return [
-        temps[0] if len(temps) > 0 and temps[0] is not None else None,
-        temps[1] if len(temps) > 1 and temps[1] is not None else None,
-        temps[2] if len(temps) > 2 and temps[2] is not None else None,
-    ]
+    if hardware.connected:
+        all_temps = hardware.read_all_channels()
+    else:
+        all_temps = simulate_values(8)
+
+    if all_temps is None:
+        all_temps = simulate_values(8)
+
+    if any(v is not None for v in all_temps):
+        return [
+            all_temps[0] if len(all_temps) > 0 else None,
+            all_temps[1] if len(all_temps) > 1 else None,
+            all_temps[2] if len(all_temps) > 2 else None,
+        ]
+
+    return simulate_values(3)
 
 
 def parse_furnace_id(value):

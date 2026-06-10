@@ -1,9 +1,3 @@
-"""Read temperatures from an MCC E-TC thermocouple device.
-
-The wrapper keeps the dashboard usable when the MCC library or hardware is
-unavailable by falling back to simulated channel values.
-"""
-
 import time
 
 try:
@@ -11,7 +5,6 @@ try:
 except Exception:
     class TempScale:
         """Fallback temperature scale constants when MCC UL is missing."""
-
         CELSIUS = "CELSIUS"
 
 
@@ -25,14 +18,6 @@ class MCCThermocouple:
     """
 
     def __init__(self, device_ip=None, device_id=None, board_num=0):
-        """Initialize connection metadata and load the MCC library.
-
-        Args:
-            device_ip (str, optional): Device IP address for display.
-            device_id (str, optional): Optional external device id.
-            board_num (int, optional): InstaCal board number to read.
-        """
-
         self.device_ip = device_ip
         self.device_id = device_id
         self.board_num = board_num
@@ -41,6 +26,8 @@ class MCCThermocouple:
         self.last_error = None
         self.simulation_mode = False
         self._last_logged_error = None
+        self.ever_had_real_data = False
+        self.last_real_data_ts = None
 
         try:
             from mcculw import ul
@@ -51,19 +38,11 @@ class MCCThermocouple:
             self.ul = None
 
     def _log_once(self, message):
-        """Print a repeated hardware error only when it changes."""
-
         if message != self._last_logged_error:
             print(message)
             self._last_logged_error = message
 
     def connect(self):
-        """Mark the configured MCC board as available.
-
-        Returns:
-            bool: ``True`` when the MCC library is available.
-        """
-
         if not self.ul:
             self.connected = False
             self.simulation_mode = True
@@ -90,8 +69,6 @@ class MCCThermocouple:
             return False
 
     def _simulate(self, count):
-        """Create deterministic-looking fallback channel readings."""
-
         try:
             import numpy as np
             noise = np.random.normal(0, 0.5, count)
@@ -102,20 +79,24 @@ class MCCThermocouple:
         base_temps = [72.5 + (2.0 * index) for index in range(count)]
         return [temp + n for temp, n in zip(base_temps, noise)]
 
+    def _mark_real_data(self):
+        self.ever_had_real_data = True
+        self.last_real_data_ts = time.time()
+        self.simulation_mode = False
+
+    def _real_data_recent(self, timeout_s=30):
+        if self.last_real_data_ts is None:
+            return False
+        return (time.time() - self.last_real_data_ts) <= timeout_s
+
     def read_channels(self, channels=None):
-        """Read one or more thermocouple channels.
-
-        Args:
-            channels (list[int], optional): MCC channel numbers to read.
-
-        Returns:
-            list[float | None]: Temperatures for requested channels.
-        """
-
         if channels is None:
-            channels = [0, 1, 2]
+            channels = [0, 1, 2, 3, 4, 5, 6, 7]
 
-        if not self.connected or not self.ul or self.simulation_mode:
+        if not self.connected or not self.ul:
+            self.simulation_mode = True
+            self.last_error = "Hardware/library unavailable; using simulated data."
+            self._log_once(self.last_error)
             return self._simulate(len(channels))
 
         try:
@@ -132,43 +113,54 @@ class MCCThermocouple:
                     failures += 1
                     failure_messages.append(f"ch{ch}: {ch_error}")
 
-            if failures == len(channels):
+            any_real = any(v is not None for v in readings)
+
+            if any_real:
+                self._mark_real_data()
+                if failures > 0:
+                    self.last_error = f"Partial read failure on {failures} channel(s)."
+                    self._log_once(self.last_error)
+                return readings
+
+            if self._real_data_recent(timeout_s=30):
+                self.simulation_mode = False
+                self.last_error = "No current real data, but real data was seen within 30 seconds."
+                details = " | ".join(failure_messages)
+                self._log_once(self.last_error + f" Details: {details}")
+                return readings
+
+            if not self.ever_had_real_data:
                 self.simulation_mode = True
-                self.last_error = "All hardware channel reads failed; using simulated data."
+                self.last_error = "No hardware data yet; using simulated data."
                 details = " | ".join(failure_messages)
                 self._log_once(f"{self.last_error} Details: {details}")
                 return self._simulate(len(channels))
 
-            if failures > 0:
-                self.last_error = f"Partial read failure on {failures} channel(s)."
-                self._log_once(self.last_error)
-
+            self.simulation_mode = False
+            self.last_error = "All channels returned None; returning None values."
+            details = " | ".join(failure_messages)
+            self._log_once(self.last_error + f" Details: {details}")
             return readings
 
         except Exception as e:
-            self.simulation_mode = True
             self.last_error = f"Error reading channels: {e}"
             self._log_once(self.last_error)
-            return self._simulate(len(channels))
+
+            if not self.ever_had_real_data:
+                self.simulation_mode = True
+                return self._simulate(len(channels))
+
+            self.simulation_mode = False
+            return [None] * len(channels)
 
     def read_single_channel(self, channel=0):
-        """Read a single thermocouple channel."""
-
         values = self.read_channels([channel])
         return values[0] if values else None
 
     def read_all_channels(self):
-        """Read all eight MCC E-TC channels."""
-
         return self.read_channels(channels=[0, 1, 2, 3, 4, 5, 6, 7])
 
     def disconnect(self):
-        """Close the logical hardware connection.
-
-        Returns:
-            bool: Always ``True`` after the connection state is cleared.
-        """
-
         if not self.connected:
             return True
         self.connected = False
@@ -177,8 +169,6 @@ class MCCThermocouple:
         return True
 
     def get_device_info(self):
-        """Return device metadata for status displays."""
-
         return {
             "device_id": self.device_id,
             "device_ip": self.device_ip,
@@ -188,11 +178,11 @@ class MCCThermocouple:
             "channels": 8,
             "sampling_rate_max": 1000,
             "last_error": self.last_error,
+            "ever_had_real_data": self.ever_had_real_data,
+            "last_real_data_ts": self.last_real_data_ts,
         }
 
     def test_read(self):
-        """Run a console smoke test for channels 0 through 2."""
-
         print("\n=== MCC E-TC Hardware Test ===")
         print(f"Device IP: {self.device_ip}")
         print(f"Board Number: {self.board_num}")
@@ -201,22 +191,19 @@ class MCCThermocouple:
             print("Failed to connect to device")
             return False
 
-        print("\nReading channels 0, 1, 2...")
-        temps = self.read_channels([0, 1, 2])
+        print("\nReading all 8 channels...")
+        temps = self.read_all_channels()
 
-        if temps:
-            print(f"Channel 0: {temps[0] if temps[0] is not None else 'N/A'}")
-            print(f"Channel 1: {temps[1] if temps[1] is not None else 'N/A'}")
-            print(f"Channel 2: {temps[2] if temps[2] is not None else 'N/A'}")
-            if self.simulation_mode:
-                print("Hardware unavailable; currently using simulated data")
-            else:
-                print("Hardware test complete")
-            self.disconnect()
-            return True
+        for i, value in enumerate(temps):
+            print(f"Channel {i}: {value if value is not None else 'N/A'}")
 
-        print("Failed to read channels")
-        return False
+        if self.simulation_mode:
+            print("Currently using simulated data")
+        else:
+            print("Hardware test complete")
+
+        self.disconnect()
+        return True
 
 
 if __name__ == "__main__":
