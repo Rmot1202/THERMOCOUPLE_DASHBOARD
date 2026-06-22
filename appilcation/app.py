@@ -384,21 +384,21 @@ app.layout = html.Div(
                                         html.Div(
                                             className="temp-card",
                                             children=[
-                                                html.Div("Channel 0", className="temp-label"),
+                                                html.Div("Outlet", className="temp-label"),
                                                 html.Div(id="temp-0", className="temp-value temp-blue", children="--"),
                                             ],
                                         ),
                                         html.Div(
                                             className="temp-card",
                                             children=[
-                                                html.Div("Channel 1", className="temp-label"),
+                                                html.Div("Center", className="temp-label"),
                                                 html.Div(id="temp-1", className="temp-value temp-red", children="--"),
                                             ],
                                         ),
                                         html.Div(
                                             className="temp-card",
                                             children=[
-                                                html.Div("Channel 2", className="temp-label"),
+                                                html.Div("Inlet", className="temp-label"),
                                                 html.Div(id="temp-2", className="temp-value temp-purple", children="--"),
                                             ],
                                         ),

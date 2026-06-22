@@ -362,7 +362,7 @@ input:focus{
 
 @keyframes screenFlashRed{
   0%,100%{background:var(--bg)}
-  50%{background:#ffe3e3}
+  50%{background:#f20808e9}
 }
 
 @keyframes tempFlashRed{
