@@ -19,7 +19,7 @@ class MCCThermocouple:
         self.ever_had_real_data = False
         self.last_real_data_ts = None
         self.scale = ul.TempScale.CELSIUS if ul else None
-        self.thermocouple_type = ul.TcType.K if ul else None
+        self.thermocouple_type = ul.TcType.R if ul else None
 
         if ul is None:
             self.last_error = "uldaq library unavailable"
@@ -123,6 +123,9 @@ class MCCThermocouple:
     def read_channels(self, channels=None):
         if channels is None:
             channels = [0, 1, 2, 3, 4, 5, 6, 7]
+            
+        if not self.connected or not self.device:
+            self.connect
 
         if not self.connected or not self.device:
             self.simulation_mode = True

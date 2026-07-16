@@ -1,4 +1,4 @@
-#!/home/ccam1/Desktop/Thermo_Dash/venv/bin/python3
+#!/home/CCAM/raven.mott/Desktop/Thermocouple_dashboard/venv/bin/python3
 
 # $Id: rst2odt_prepstyles.py 9365 2023-04-26 12:57:44Z milde $
 # Author: Dave Kuhlman <dkuhlman@rexx.com>

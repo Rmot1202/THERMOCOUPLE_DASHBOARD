@@ -49,7 +49,6 @@ DEFAULT_CONFIG = {
     "y_max": getattr(config, "DEFAULT_Y_MAX", 90.0),
     "sampling_frequency": float(getattr(config, "DEFAULT_SAMPLING_FREQUENCY", 1.0)),
 }
-
 app = dash.Dash(
     __name__,
     external_stylesheets=[dbc.themes.BOOTSTRAP],
@@ -57,10 +56,15 @@ app = dash.Dash(
     url_base_pathname=BASE_PATH,
 )
 app.title = "Thermocouple Dashboard"
+server = app.server
 
 profile_manager = ProfileManager(str(PROFILES_DIR))
 hardware = MCCThermocouple(device_ip=DEVICE_IP)
 
+try:
+    hardware.connect()
+except Exception as e:
+    print(f"Initial hardware connect failed: {e}")
 
 def load_config():
     try:
@@ -130,8 +134,13 @@ def simulate_values(count=3):
         import random
         return [72.0 + random.uniform(-1.0, 1.0) + i * 2 for i in range(count)]
 
-
 def read_live_temps():
+    if not hardware.connected:
+        try:
+            hardware.connect()
+        except Exception:
+            pass
+
     if hardware.connected:
         all_temps = hardware.read_all_channels()
     else:
@@ -148,6 +157,7 @@ def read_live_temps():
         ]
 
     return simulate_values(3)
+    
 
 
 def parse_furnace_id(value):
@@ -1068,6 +1078,10 @@ clientside_callback(
     prevent_initial_call=True,
 )
 
+
+
+
+# layouts, callbacks, etc.
 
 if __name__ == "__main__":
     if not hardware.connected:
