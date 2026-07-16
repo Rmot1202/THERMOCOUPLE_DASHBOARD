@@ -2,9 +2,9 @@
 
 ## Requirements
 
-- MCC E-TC device connected over Ethernet
-- MCC drivers/device manager installed on the host
-- Python package from `requirements.txt`, including `mcculw`
+- MCC E-TC device connected over Ethernet.
+- MCC drivers/device manager installed on the host.
+- Python package dependencies from `requirements.txt`, including `mcculw`.
 
 ## Configure Device IP
 
@@ -14,7 +14,7 @@ Set the device IP in `appilcation/config.py`:
 DEVICE_IP = "192.168.1.100"
 ```
 
-Leave it as `None` to auto-discover or use simulated data when hardware is unavailable.
+Leave it as `None` to auto-discover the device, or rely on simulated data when hardware is unavailable.
 
 ## Test Hardware
 
@@ -63,4 +63,4 @@ If the MCC library or hardware connection is unavailable, the dashboard logs a w
 ## References
 
 - MCC Python library: `mcculw`
-- MCC E-TC user guide and MCC software documentation
+- MCC software and quick-start documentation: [MCC DAQ Quick Start Guide](https://files.digilent.com/manuals/QS-MCCDAQ.pdf?_gl=1*1piwasw*_gcl_au*MTAwMjkyNzEzMC4xNzgwMDY5ODQ4LjQwNDEwNzUzMS4xNzgwMDcwMzU3LjE3ODAwNzAzNTc.*_ga*MTAwODQ2OTIyOC4xNzgwMDY5ODQ5*_ga_JSPEFFCPBT*czE3ODQyMjU5NzIkbzMkZzEkdDE3ODQyMjYwMTIkajIxJGwwJGgxMTQ5MzkyNTg2)
