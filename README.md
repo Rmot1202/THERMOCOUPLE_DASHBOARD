@@ -1,256 +1,267 @@
 # Thermocouple Dashboard
-**A Python Dash web application for monitoring MCC E-TC thermocouple channels, recording temperature data, and downloading files via HTTPS.**
 
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](code_of_conduct.md) 
+A Python Dash web application for monitoring an MCC thermocouple device, visualizing live temperature data, recording TUS-style output files, and managing furnace profile settings. The dashboard is designed for lab and manufacturing use where operators need simple browser-based visibility into live thermocouple readings and recording controls. [file:480]
 
-## Initial Contributors
-- Raven Mott 
+## Features
 
-## Funding
-No external funding source specified in the provided files. 
-
----
-
-# Project Description
-
-## Overview
-The Thermocouple Dashboard is a Python Dash web application for monitoring MCC E-TC thermocouple channels, recording temperature data, and downloading files over HTTPS. It is intended for engineers, researchers, or operators who need live thermocouple monitoring and recording in a manufacturing or lab setting. The system operates as a dashboard application with local development support and a Docker-based deployment option using NGINX as a reverse proxy.
-
-## Key Features
-- Live temperature monitoring for 3 channels: Outlet, Center, and Inlet. 
-- Recording management with start/stop controls and LabVIEW-compatible TUS output files. 
-- File download support, persistent JSON-based configuration, and HTTPS-ready deployment with NGINX. 
-
-## Goals
-- Provide real-time thermocouple visibility from an MCC E-TC device. 
-- Support reliable recording and export of furnace temperature data in a LabVIEW-compatible format. 
-- Enable local development and production-style deployment with HTTPS and hardware fallback behavior. 
-
----
-
-# Developer Instructions
-
-## Requirements
-
-### Software
-- Python with dependencies installed from `requirements.txt`. 
-- Dash for the web application UI. 
-- Docker and Docker Compose for containerized deployment. 
-- OpenSSL for generating self-signed certificates in local HTTPS setups. 
-
-### Hardware
-- MCC E-TC thermocouple device. 
-- Device IP address `192.168.10.101`. 
-- The application uses channels 0, 1, and 2 out of 8 available channels. 
-
----
-
-## Installation
-
-### Local Development
-```powershell
-pip install -r requirements.txt
-python appilcation/app.py
-```
-
-Then open: `http://localhost:8050/` 
-
-### Docker
-```powershell
-docker-compose up
-```
-
-Then access: `https://localhost/` using a self-signed certificate setup. 
-
----
+- Live temperature display for three dashboard positions: Outlet, Center, and Inlet. [file:480]
+- Real-time charting of incoming temperature data with configurable bounds and setpoint lines. [file:480]
+- Recording controls for starting and stopping TUS-style temperature logs. [file:480]
+- Save/export workflow for recording files and furnace configuration. [file:480]
+- Persistent JSON-based profile and configuration storage. [file:480]
+- Simulation fallback when MCC hardware is unavailable. [file:480]
 
 ## Project Structure
 
 ```text
 Thermocouple_dashboard/
-├── appilcation/                    # Main application (note: typo is intentional)
-│   ├── app.py                      # Dash frontend + callbacks
-│   ├── config.py                   # Configuration constants
-│   ├── hardware.py                 # MCC device interface
-│   └── profiles.py                 # Profile management
+├── appilcation/                  # Main application package (directory name is intentional)
+│   ├── app.py                    # Dash UI, callbacks, data flow, recording logic
+│   ├── config.py                 # Device IP and app defaults
+│   ├── hardware.py               # MCC thermocouple interface
+│   └── profiles.py               # Furnace profile management
 │
-├── tests/                          # Automated and hardware tests
+├── tests/                        # Automated and manual tests
 │   ├── test_app_helpers.py
 │   ├── test_dash_callbacks.py
-│   ├── test_hardware.py            # Manual MCC hardware test script
+│   ├── test_hardware.py
 │   ├── test_hardware_wrapper.py
 │   └── test_profiles.py
 │
-├── storage/                        # Docker volumes (not in git)
-│   ├── recordings/                 # TUS temperature files
-│   ├── profiles/                   # JSON configuration
-│   └── logs/
+├── storage/                      # Runtime data
+│   ├── recordings/               # Saved TUS text files
+│   └── profiles/                 # Current config and saved profile JSON files
 │
-├── docs/
-│   ├── SIMPLIFIED_ARCHITECTURE.md  # System design
-│   └── SETUP_GUIDE.md              # Installation guide
-│
-├── Dockerfile                      # Application container
-├── docker-compose.yml              # Full stack (app + nginx)
-├── requirements.txt                # Python dependencies
+├── docs/                         # Project documentation
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
 └── README.md
-``` 
+```
 
----
+## Requirements
+
+### Software
+
+- Python 3 with dependencies installed from `requirements.txt`.
+- Dash and Dash Bootstrap Components for the web UI. [file:480]
+- Plotly for live chart rendering. [file:480]
+- Optional: Docker and Docker Compose for containerized deployment.
+- Optional: Gunicorn and systemd for Linux service deployment.
+
+### Hardware
+
+- MCC thermocouple-capable DAQ device.
+- Thermocouple channels read through the MCC hardware interface. [file:480]
+- The UI displays channels 0, 1, and 2 as Outlet, Center, and Inlet. [file:480]
+- The hardware layer can read all 8 channels and then use the first 3 for the dashboard. [file:480]
+- Thermocouple type should be configured to match the installed sensor type in `hardware.py`.
+
+## Installation
+
+### Local Development
+
+Create and activate a virtual environment, then install dependencies:
+
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+Start the application:
+
+```bash
+python appilcation/app.py
+```
+
+Then open:
+
+```text
+http://localhost:8050/
+```
+
+### Linux Service with Gunicorn
+
+A common production-style launch command is:
+
+```bash
+gunicorn --chdir /path/to/Thermocouple_dashboard/appilcation --workers 1 --bind 127.0.0.1:8050 app:server
+```
+
+For hardware-connected deployments, a single worker is recommended during validation so only one process talks to the MCC device at a time.
+
+### Docker
+
+If your repository includes a working Docker configuration, run:
+
+```bash
+docker-compose up --build
+```
+
+Then access the app according to your compose configuration.
 
 ## Configuration
-Configuration is stored either in `/storage/profiles/` or in `thermocouple_config.json/`, using JSON-based settings for furnace number and temperature bounds. [file:131] The documented environment variables are `MCC_DEVICE_IP`, `DASH_PORT`, and `POLLING_INTERVAL`. 
 
-Example configuration:
+The app loads defaults from `appilcation/config.py` and stores runtime configuration in JSON files under `storage/profiles/`. [file:480]
+
+### Runtime Storage Paths
+
+- Current configuration: `storage/profiles/current_config.json` [file:480]
+- Saved profiles: `storage/profiles/*.json` [file:480]
+- Recordings: `storage/recordings/` [file:480]
+
+### Typical Configuration Values
+
+The live app uses configuration fields including:
+
+- `furnace_id` [file:480]
+- `furnace_number` [file:480]
+- `setpoint` [file:480]
+- `lower_bound` [file:480]
+- `upper_bound` [file:480]
+- `y_min` [file:480]
+- `y_max` [file:480]
+- `sampling_frequency` [file:480]
+
+Example profile JSON:
+
 ```json
 {
+  "furnace_id": "1",
   "furnace_number": 1,
   "setpoint": 75.0,
   "lower_bound": 70.0,
-  "upper_bound": 80.0
+  "upper_bound": 80.0,
+  "y_min": 60.0,
+  "y_max": 90.0,
+  "sampling_frequency": 1.0
 }
-``` 
-
-Example environment file:
-```text
-MCC_DEVICE_IP=192.168.10.101
-DASH_PORT=8050
-POLLING_INTERVAL=1000
-``` 
-
----
+```
 
 ## Usage
 
-### Basic Example
-```powershell
+### Run the Dashboard
+
+```bash
 python appilcation/app.py
-``` 
+```
 
-### Expected Output
-The user should see a live dashboard showing temperature values for three thermocouple channels in the browser.Recordings are stored as TUS text files in `/storage/recordings/`, and configuration data is stored in the profile/config JSON location. 
+### Dashboard Functions
 
----
+The dashboard provides:
 
-## Hardware Setup
-The MCC E-TC device is configured with IP address `192.168.10.101`, and the application uses three channels: 0, 1, and 2. If the device is unavailable, the application switches to simulator mode using Gaussian noise.
+- A live temperature chart. [file:480]
+- Live value cards for three displayed channels. [file:480]
+- Furnace profile selection and save behavior. [file:480]
+- Configurable timer and alert behavior. [file:480]
+- Recording controls for temperature logging. [file:480]
 
----
+### Recording Workflow
 
-## File Formats
+1. Start recording from the dashboard. [file:480]
+2. The application writes temperature rows into a text file in `storage/recordings/`. [file:480]
+3. Stop recording to finalize the session. [file:480]
+4. Use the save workflow to export the latest recording and persist the active furnace configuration. [file:480]
 
-### TUS Format
-Temperature recording files are stored in `/storage/recordings/` using the naming pattern:
+## Hardware Behavior
+
+The application creates an `MCCThermocouple` interface using the configured device IP, then reads live temperatures from the MCC hardware layer. [file:480] If the hardware is unavailable or not connected, the app can fall back to simulated values so the dashboard remains usable. [file:480]
+
+### Channel Mapping in the UI
+
+- Channel 0 → Outlet [file:480]
+- Channel 1 → Center [file:480]
+- Channel 2 → Inlet [file:480]
+
+### Simulation Mode
+
+If no live hardware connection is available, the dashboard can display simulated readings and show a simulation status/banner in the UI. [file:480]
+
+## Recording Format
+
+Recordings are saved as text files in `storage/recordings/`. [file:480]
+
+The app writes rows containing time fields and channel temperatures during active recording. [file:480]
+
+Example structure:
 
 ```text
-TUS_F{furnace}_{YYMMDD}_{HHMM}.txt
-``` 
+hour    minute    second    channel_0    channel_1    channel_2    0.000
+14.000  23.000    45.123    75.123       76.456       74.890       0.000
+14.000  23.000    46.124    75.145       76.478       74.912       0.000
+```
 
-Columns are tab-separated:
+File names are generated automatically when recording starts. [file:480]
 
-```text
-hour    minute  second  channel_0   channel_1   channel_2
-``` 
+## Deployment Notes
 
-Example:
-```text
-14  23  45  75.123  76.456  74.890
-14  23  46  75.145  76.478  74.912
-``` 
+### Gunicorn + systemd
 
-### Configuration Format
-Configuration is stored as JSON for furnace number and bound values. 
+For Linux deployment, the app can be served by Gunicorn and managed by systemd. The Dash server object is exposed as:
 
----
+```python
+server = app.server
+```
 
-## Deployment
+which allows Gunicorn to run the app as `app:server` from the `appilcation/` directory. [file:480]
 
-### Local with HTTPS
-1. Generate an SSL certificate:
-   ```powershell
-   openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes
-   ```
-2. Update `docker-compose.yml` with certificate paths. 
-3. Build and deploy:
-   ```powershell
-   docker-compose up -d
-   ```
-4. Access the application at `https://localhost/`.
+Example service command:
 
-### NGINX Use
-The project is documented as production-ready with an NGINX reverse proxy and HTTPS support. In this setup, NGINX sits in front of the Dash app, handling HTTPS traffic and forwarding requests to the application service defined in the deployment stack. 
+```bash
+/home/USER/path/to/venv/bin/gunicorn --chdir /home/USER/path/to/Thermocouple_dashboard/appilcation --workers 1 --bind 127.0.0.1:8050 app:server
+```
 
----
+### Reverse Proxy
 
-## Documentation
-- [Simplified Architecture](docs/SIMPLIFIED_ARCHITECTURE.md) — system design and data flow. 
-- [Setup Guide](docs/SETUP_GUIDE.md) — installation and configuration. 
-- [Test Coverage Summary](docs/TESTS.md) — automated test command and test file summary.
-- [MCC Hardware Guide](docs/MCC_HARDWARE_GUIDE.md) — device setup and manual hardware checks.
+For internal or production environments, place NGINX in front of Gunicorn and proxy traffic to `127.0.0.1:8050`.
 
----
+## Testing
+
+Run automated tests from the repository root:
+
+```bash
+pytest -q
+```
+
+Or, if using the virtual environment Python directly:
+
+```bash
+./venv/bin/python -m pytest -q
+```
+
+Manual or hardware-focused tests can be run from the `tests/` directory depending on the available MCC device and local setup.
 
 ## Troubleshooting
 
-| Issue | Solution |
-|---|---|
-| Device offline | App switches to simulator mode automatically.  |
-| Temperature readings stuck | Check device IP `192.168.10.101` and network connectivity.  |
-| Files not downloading | Ensure `/storage/recordings/` volume is mounted in Docker.  |
-| HTTPS certificate warning | Expected when using a self-signed certificate locally.  |
+| Issue | Likely Cause | Action |
+|---|---|---|
+| Dashboard shows simulation mode | MCC device not connected or app did not connect successfully | Verify device connectivity, IP, thermocouple type, and service startup logs. [file:480] |
+| Direct Python run works but Gunicorn shows simulated data | Hardware connection code only runs in `__main__` or Gunicorn workers are not connecting correctly | Move/connect hardware during app import or retry in the read path; test with one worker. [file:480] |
+| No recordings saved | Recording not started or storage path unavailable | Check `storage/recordings/` and verify write permissions. [file:480] |
+| Service starts but browser is unreachable | Gunicorn bound to localhost only, or reverse proxy not configured | Check service status, local curl response, and proxy settings. |
+| Wrong temperature values | Thermocouple type mismatch | Set the MCC thermocouple type in `hardware.py` to match the installed probe type. |
 
----
+## Development Notes
 
-## Development
+- The application directory is named `appilcation/` and that spelling is used intentionally throughout the project structure.
+- The Dash app uses `suppress_callback_exceptions=True` and a server object for Gunicorn compatibility. [file:480]
+- Persistent runtime data is stored in `storage/`, not inside the source package. [file:480]
+- Sampling frequency is configurable in the UI and affects the dashboard interval timing. [file:480]
 
-### Install for Development
-```powershell
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-``` 
+## Future Improvements
 
-### Run Tests
-From the `Thermocouple_dashboard` project root:
+- Add a dedicated environment-variable example file.
+- Document the exact MCC hardware setup and thermocouple type requirements.
+- Expand Docker and NGINX deployment documentation.
+- Add clearer contributor, maintainer, and license sections.
 
-```powershell
-.\.venv\Scripts\python.exe -m pytest -q
-```
+## Contributor
 
-To run the manual MCC hardware check:
-
-```powershell
-.\.venv\Scripts\python.exe tests/test_hardware.py
-```
-
-### Modify App
-Edit `appilcation/app.py` and refresh the browser; hot reload is enabled during development. 
-
----
-
-## Limitations & Assumptions
-- The application depends on MCC E-TC hardware for live readings, but falls back to simulator mode if the device is unavailable.
-- Docker-based deployment assumes mounted storage directories for recordings and profiles.
-- The provided materials do not include a full license section or detailed ownership workflow. 
-
----
-
-## Future Work
-- Expand formal documentation using the architecture and setup guides already referenced in the project. 
-- Add clearer maintainer, licensing, and contributor details to replace remaining template placeholders. 
-- Extend testing and deployment notes for non-Docker production scenarios. 
-
----
-
-## Contact / Ownership
-Maintainer and ownership details are not fully defined in the provided template, but Raven Mott is identified as the contributor in the project materials.
-
----
+- Raven Mott
 
 ## Useful Links
-- [Dash Documentation](https://dash.plotly.com/) 
-- [CCAM](https://ccam-va.com/) 
 
-## Commonwealth Center for Advanced Manufacturing - CCAM
-[CCAM](https://ccam-va.com/) is described in the template as an IP-friendly innovation campus where industry, academia, and government collaborate to solve advanced manufacturing challenges and develop workforce pathways. 
-```
+- [Dash Documentation](https://dash.plotly.com/)
+- [Plotly Documentation](https://plotly.com/python/)
+- [CCAM](https://ccam-va.com/)
