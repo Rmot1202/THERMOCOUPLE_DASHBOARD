@@ -399,18 +399,6 @@ app.layout = html.Div(
                                                 html.Div(id="temp-2", className="temp-value temp-purple", children="--"),
                                             ],
                                         ),
-                                        html.Div(
-                                            [
-                                                dbc.Label("Thermocouple Type", className="field-label"),
-                                                dcc.Dropdown(
-                                                    id="cfg-thermocouple-type",
-                                                    options=[{"label": f"Type {name}", "value": name} for name in "JKTERSBN"],
-                                                    value=loaded_cfg.get("thermocouple_type", DEFAULT_CONFIG["thermocouple_type"]),
-                                                    clearable=False,
-                                                    className="compact-dropdown",
-                                                ),
-                                            ],
-                                        ),
                                     ],
                                 ),
                             ],
@@ -481,6 +469,14 @@ app.layout = html.Div(
                                         str(loaded_cfg.get("furnace_number", DEFAULT_CONFIG["furnace_number"])),
                                     ),
                                     className="field-input",
+                                ),
+                                dbc.Label("Thermocouple Type", className="field-label mt-3"),
+                                dcc.Dropdown(
+                                    id="cfg-thermocouple-type",
+                                    options=[{"label": f"Type {name}", "value": name} for name in "JKTERSBN"],
+                                    value=loaded_cfg.get("thermocouple_type", DEFAULT_CONFIG["thermocouple_type"]),
+                                    clearable=False,
+                                    className="compact-dropdown",
                                 ),
                             ],
                         ),
