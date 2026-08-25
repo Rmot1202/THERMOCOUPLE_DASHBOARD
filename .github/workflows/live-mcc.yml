@@ -1,0 +1,48 @@
+name: Live MCC dashboard
+
+on:
+  push:
+    branches:
+      - github-dashboard
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: [self-hosted, linux, ARM64, live-mcc]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create test environment
+        run: |
+          python3 -m venv .ci-venv
+          . .ci-venv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run dashboard tests
+        run: |
+          . .ci-venv/bin/activate
+          python -m pytest -q
+
+  deploy:
+    needs: test
+    runs-on: [self-hosted, linux, ARM64, live-mcc]
+    environment: live-mcc
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy and restart service
+        run: |
+          sudo systemctl stop thermocouple-dashboard
+          sudo rsync -a --delete \
+            --exclude '.git/' \
+            --exclude 'venv/' \
+            --exclude '.venv/' \
+            --exclude '.ci-venv/' \
+            --exclude 'storage/' \
+            ./ /opt/Thermocouple_dashboard/
+          /opt/Thermocouple_dashboard/venv/bin/pip install -r /opt/Thermocouple_dashboard/requirements.txt
+          sudo systemctl start thermocouple-dashboard
+          sudo systemctl --no-pager status thermocouple-dashboard
