@@ -1,6 +1,5 @@
 """Regression tests for Dash helper functions and profile callbacks."""
 
-import json
 import types
 
 import pytest
@@ -67,44 +66,6 @@ def test_make_figure_uses_store_data_and_y_axis_range():
     assert list(fig.data[1].y) == store["ch1"]
     assert list(fig.data[2].y) == store["ch2"]
     assert list(fig.layout.yaxis.range) == [cfg["y_min"], cfg["y_max"]]
-
-
-def test_load_profile_file_returns_defaults_for_missing_file(tmp_path, monkeypatch):
-    """Missing profiles should return a copy of the default config."""
-
-    monkeypatch.setattr(dash_app, "PROFILES_DIR", tmp_path)
-    result = dash_app.load_profile_file("missing.json")
-    assert result == dash_app.DEFAULT_CONFIG
-
-
-def test_load_selected_profile_returns_expected_config(tmp_path, monkeypatch):
-    """Selecting a profile should populate every furnace control."""
-
-    monkeypatch.setattr(dash_app, "PROFILES_DIR", tmp_path)
-
-    test_data = {
-        "furnace_number": 4,
-        "setpoint": 88.5,
-        "lower_bound": 82.0,
-        "upper_bound": 92.0,
-        "y_min": 60.0,
-        "y_max": 100.0,
-        "sampling_frequency": 1.5,
-    }
-    path = tmp_path / "profile-4.json"
-    path.write_text(json.dumps(test_data), encoding="utf-8")
-
-    outputs = dash_app.load_selected_profile(path.name)
-
-    assert outputs[0] == 4
-    assert outputs[1] == 88.5
-    assert outputs[2] == 82.0
-    assert outputs[3] == 92.0
-    assert outputs[4] == 60.0
-    assert outputs[5] == 100.0
-    assert outputs[6] == 1.5
-    assert outputs[7] == dash_app.DEFAULT_CONFIG["thermocouple_type"]
-    assert outputs[8] == "Loaded Furnace 4"
 
 
 def test_toggle_save_modal_respects_trigger(monkeypatch):

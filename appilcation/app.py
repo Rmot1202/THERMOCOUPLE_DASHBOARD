@@ -19,11 +19,9 @@ import plotly.graph_objects as go
 try:
     from . import config
     from .hardware import MCCThermocouple
-    from .profiles import ProfileManager
 except ImportError:
     import config
     from hardware import MCCThermocouple
-    from profiles import ProfileManager
 
 
 STORAGE_PATH = Path(os.getenv("STORAGE_PATH", "./storage"))
@@ -60,7 +58,6 @@ app = dash.Dash(
 app.title = "Thermocouple Dashboard"
 server = app.server
 
-profile_manager = ProfileManager(str(PROFILES_DIR))
 hardware = MCCThermocouple(device_ip=DEVICE_IP)
 
 try:
@@ -86,36 +83,6 @@ def load_config():
 def save_config(cfg):
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2)
-
-
-def list_profile_options():
-    options = []
-    for path in sorted(PROFILES_DIR.glob("*.json")):
-        if path.name == CONFIG_FILE.name:
-            continue
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                cfg = json.load(f)
-            furnace_id = cfg.get("furnace_id") or cfg.get("furnace_number")
-            if furnace_id is None:
-                continue
-            options.append({"label": f"Furnace {furnace_id}", "value": path.name})
-        except Exception:
-            continue
-    return options
-
-
-def load_profile_file(filename):
-    path = PROFILES_DIR / filename
-    if not path.exists():
-        return DEFAULT_CONFIG.copy()
-    with open(path, "r", encoding="utf-8") as f:
-        loaded = json.load(f)
-    merged = DEFAULT_CONFIG.copy()
-    merged.update(loaded)
-    fid = loaded.get("furnace_id") or loaded.get("furnace_number")
-    merged["furnace_id"] = str(fid if fid is not None else DEFAULT_CONFIG["furnace_id"]).strip()
-    return merged
 
 
 def fmt_temp(value):
@@ -401,40 +368,36 @@ app.layout = html.Div(
                                         ),
                                     ],
                                 ),
-                            ],
-                        ),
-                        html.Section(
-                            className="panel recording-panel",
-                            children=[
                                 html.Div(
-                                    className="panel-header",
+                                    className="recording-panel",
                                     children=[
                                         html.Div(
+                                            className="panel-header",
                                             children=[
                                                 html.H2("Recording", className="panel-title"),
                                                 html.Div("Capture a TUS log for later analysis", className="panel-subtitle"),
-                                            ]
+                                            ],
                                         ),
+                                        html.Div(
+                                            className="action-row",
+                                            children=[
+                                                dbc.Button("Start Recording", id="btn-start", color="dark", className="action-btn", n_clicks=0),
+                                                dbc.Button(
+                                                    "Stop Recording",
+                                                    id="btn-stop",
+                                                    color="light",
+                                                    className="action-btn action-btn-secondary",
+                                                    n_clicks=0,
+                                                    disabled=True,
+                                                ),
+                                                dbc.Button("Save As...", id="btn-save-as", color="primary", className="action-btn", n_clicks=0),
+                                            ],
+                                        ),
+                                        html.Div(id="rec-status", className="status-line", children="Status: Idle"),
+                                        html.Div(id="rec-file", className="muted-line"),
+                                        html.Div(id="save-status", className="muted-line"),
                                     ],
                                 ),
-                                html.Div(
-                                    className="action-row",
-                                    children=[
-                                        dbc.Button("Start Recording", id="btn-start", color="dark", className="action-btn", n_clicks=0),
-                                        dbc.Button(
-                                            "Stop Recording",
-                                            id="btn-stop",
-                                            color="light",
-                                            className="action-btn action-btn-secondary",
-                                            n_clicks=0,
-                                            disabled=True,
-                                        ),
-                                        dbc.Button("Save As...", id="btn-save-as", color="primary", className="action-btn", n_clicks=0),
-                                    ],
-                                ),
-                                html.Div(id="rec-status", className="status-line", children="Status: Idle"),
-                                html.Div(id="rec-file", className="muted-line"),
-                                html.Div(id="save-status", className="muted-line"),
                             ],
                         ),
                     ],
@@ -442,20 +405,6 @@ app.layout = html.Div(
                 html.Aside(
                     className="sidebar",
                     children=[
-                        html.Section(
-                            className="panel sidebar-panel",
-                            children=[
-                                html.H3("Saved Profiles", className="side-title"),
-                                dcc.Dropdown(
-                                    id="profile-select",
-                                    options=list_profile_options(),
-                                    value=None,
-                                    placeholder="Select a furnace profile",
-                                    clearable=True,
-                                ),
-                                html.Div(id="profile-status", className="muted-line mt-3"),
-                            ],
-                        ),
                         html.Section(
                             className="panel sidebar-panel",
                             children=[
@@ -604,42 +553,6 @@ def update_interval_from_sampling(sampling):
 
 @app.callback(
     [
-        Output("cfg-furnace", "value"),
-        Output("cfg-setpoint", "value"),
-        Output("cfg-lower", "value"),
-        Output("cfg-upper", "value"),
-        Output("cfg-ymin", "value"),
-        Output("cfg-ymax", "value"),
-        Output("cfg-sampling", "value"),
-        Output("cfg-thermocouple-type", "value"),
-        Output("profile-status", "children"),
-    ],
-    Input("profile-select", "value"),
-    prevent_initial_call=True,
-)
-def load_selected_profile(profile_filename):
-    if not profile_filename:
-        raise PreventUpdate
-
-    cfg = load_profile_file(profile_filename)
-    furnace_id = cfg.get("furnace_id") or cfg.get("furnace_number", DEFAULT_CONFIG["furnace_number"])
-
-    furnace_value = furnace_id_to_number(furnace_id) if str(furnace_id).strip().isdigit() else str(furnace_id)
-    return (
-        furnace_value,
-        cfg.get("setpoint", DEFAULT_CONFIG["setpoint"]),
-        cfg.get("lower_bound", DEFAULT_CONFIG["lower_bound"]),
-        cfg.get("upper_bound", DEFAULT_CONFIG["upper_bound"]),
-        cfg.get("y_min", DEFAULT_CONFIG["y_min"]),
-        cfg.get("y_max", DEFAULT_CONFIG["y_max"]),
-        cfg.get("sampling_frequency", DEFAULT_CONFIG["sampling_frequency"]),
-        cfg.get("thermocouple_type", DEFAULT_CONFIG["thermocouple_type"]),
-        f"Loaded Furnace {furnace_id}",
-    )
-
-
-@app.callback(
-    [
         Output("btn-start", "disabled"),
         Output("btn-stop", "disabled"),
         Output("rec-status", "children"),
@@ -779,7 +692,6 @@ def toggle_save_modal(btn_save, btn_cancel, btn_confirm, is_open):
 @app.callback(
     [
         Output("save-file-store", "data"),
-        Output("profile-select", "options"),
     ],
     Input("save-modal-confirm", "n_clicks"),
     State("cfg-furnace", "value"),
@@ -795,19 +707,16 @@ def toggle_save_modal(btn_save, btn_cancel, btn_confirm, is_open):
 def prepare_save_as_with_config(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, thermocouple_type):
     files = sorted(RECORDINGS_DIR.glob("TUS_*.txt"), key=lambda x: x.stat().st_mtime, reverse=True)
     if not files:
-        return {"filename": None, "content": ""}, list_profile_options()
+        return {"filename": None, "content": ""}
 
     cfg = build_live_cfg(furnace, setpoint, lower, upper, y_min, y_max, sampling, thermocouple_type)
     save_config(cfg)
-
-    profile_name = f"furnace_{cfg['furnace_id']}"
-    profile_manager.save_profile(profile_name, cfg)
 
     latest = files[0]
     with open(latest, "r", encoding="utf-8") as f:
         content = f.read()
 
-    return {"filename": latest.name, "content": content}, list_profile_options()
+    return {"filename": latest.name, "content": content}
 
 
 @app.callback(
