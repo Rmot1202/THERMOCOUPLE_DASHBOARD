@@ -333,8 +333,49 @@ app.layout = html.Div(
                                         "display": "grid",
                                         "gridTemplateColumns": "1fr 1fr",
                                         "gap": "12px",
-                                        "marginBottom": "12px",
+                                        "marginBottom": "8px",
                                     },
+                                ),
+                                html.Div(
+                                    className="bounds-row",
+                                    children=[
+                                        html.Div(
+                                            [
+                                                dbc.Label("Setpoint (°C)", className="field-label"),
+                                                dbc.Input(
+                                                    id="cfg-setpoint",
+                                                    type="number",
+                                                    value=loaded_cfg.get("setpoint", DEFAULT_CONFIG["setpoint"]),
+                                                    step=0.1,
+                                                    className="field-input",
+                                                ),
+                                            ]
+                                        ),
+                                        html.Div(
+                                            [
+                                                dbc.Label("Lower Bound (°C)", className="field-label"),
+                                                dbc.Input(
+                                                    id="cfg-lower",
+                                                    type="number",
+                                                    value=loaded_cfg.get("lower_bound", DEFAULT_CONFIG["lower_bound"]),
+                                                    step=0.1,
+                                                    className="field-input",
+                                                ),
+                                            ]
+                                        ),
+                                        html.Div(
+                                            [
+                                                dbc.Label("Upper Bound (°C)", className="field-label"),
+                                                dbc.Input(
+                                                    id="cfg-upper",
+                                                    type="number",
+                                                    value=loaded_cfg.get("upper_bound", DEFAULT_CONFIG["upper_bound"]),
+                                                    step=0.1,
+                                                    className="field-input",
+                                                ),
+                                            ]
+                                        ),
+                                    ],
                                 ),
                                 dcc.Graph(
                                     id="live-graph",
@@ -499,36 +540,6 @@ app.layout = html.Div(
                                 ),
                                 html.Div(id="timer-readout", className="timer-readout", children="00:00:00"),
                                 html.Div(id="timer-subtext", className="timer-subtext", children="Elapsed: 00:00:00"),
-                            ],
-                        ),
-                        html.Section(
-                            className="panel sidebar-panel",
-                            children=[
-                                html.H3("Temperature Bounds", className="side-title"),
-                                dbc.Label("Setpoint (°C)", className="field-label"),
-                                dbc.Input(
-                                    id="cfg-setpoint",
-                                    type="number",
-                                    value=loaded_cfg.get("setpoint", DEFAULT_CONFIG["setpoint"]),
-                                    step=0.1,
-                                    className="field-input",
-                                ),
-                                dbc.Label("Lower Bound (°C)", className="field-label mt-3"),
-                                dbc.Input(
-                                    id="cfg-lower",
-                                    type="number",
-                                    value=loaded_cfg.get("lower_bound", DEFAULT_CONFIG["lower_bound"]),
-                                    step=0.1,
-                                    className="field-input",
-                                ),
-                                dbc.Label("Upper Bound (°C)", className="field-label mt-3"),
-                                dbc.Input(
-                                    id="cfg-upper",
-                                    type="number",
-                                    value=loaded_cfg.get("upper_bound", DEFAULT_CONFIG["upper_bound"]),
-                                    step=0.1,
-                                    className="field-input",
-                                ),
                             ],
                         ),
                     ],
