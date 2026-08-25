@@ -52,9 +52,9 @@ jobs:
           APP_DIR=/home/CCAM/raven.mott/Desktop/Thermocouple_dashboard
           VENV_DIR="$APP_DIR/venv"
 
-          sudo systemctl stop thermocouple-dashboard
+          sudo /bin/systemctl stop thermocouple-dashboard
 
-          sudo rsync -a --delete \
+          sudo /usr/bin/rsync -a --delete \
             --exclude '.git/' \
             --exclude 'venv/' \
             --exclude '.venv/' \
@@ -64,11 +64,11 @@ jobs:
 
           "$VENV_DIR/bin/python" -m pip install -r "$APP_DIR/requirements.txt"
 
-          sudo nginx -t
-          sudo systemctl reload nginx
+          sudo /usr/sbin/nginx -t
+          sudo /bin/systemctl reload nginx
 
-          sudo systemctl start thermocouple-dashboard
-          sudo systemctl is-active --quiet thermocouple-dashboard
-          sudo systemctl is-active --quiet nginx
+          sudo /bin/systemctl start thermocouple-dashboard
+          sudo /bin/systemctl is-active --quiet thermocouple-dashboard
+          sudo /bin/systemctl is-active --quiet nginx
 
           curl --fail --retry 10 --retry-delay 2 http://127.0.0.1:8050/
