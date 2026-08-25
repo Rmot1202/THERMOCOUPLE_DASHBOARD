@@ -317,7 +317,14 @@ input:focus{
 .temp-red{color:var(--red)}
 .temp-purple{color:var(--purple)}
 
-.recording-panel{padding:12px}
+.recording-panel{padding:8px 0 0}
+
+.recording-panel .panel-header{margin:0 0 5px;padding:0}
+.recording-panel .panel-title{font-size:15px}
+.recording-panel .action-row{gap:6px}
+.recording-panel .action-btn{min-height:32px;padding:0 9px!important;font-size:11px!important;border-radius:8px!important}
+.recording-panel .status-line,
+.recording-panel .muted-line{margin-top:4px;font-size:11px}
 
 .action-row{
   display:flex;
@@ -327,6 +334,8 @@ input:focus{
 
 .action-btn{
   min-height:42px;
+  .sidebar-panel .mt-3{margin-top:.4rem!important}
+  .sidebar-panel input{height:36px}
   border-radius:12px!important;
   padding:0 16px!important;
   font-weight:600!important;

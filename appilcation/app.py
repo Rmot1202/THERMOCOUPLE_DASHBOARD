@@ -404,7 +404,6 @@ app.layout = html.Div(
                                             className="panel-header",
                                             children=[
                                                 html.H2("Recording", className="panel-title"),
-                                                html.Div("Capture a TUS log for later analysis", className="panel-subtitle"),
                                             ],
                                         ),
                                         html.Div(
