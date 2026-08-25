@@ -47,7 +47,7 @@ DEFAULT_CONFIG = {
     "upper_bound": getattr(config, "DEFAULT_UPPER_BOUND", 80.0),
     "y_min": getattr(config, "DEFAULT_Y_MIN", 60.0),
     "y_max": getattr(config, "DEFAULT_Y_MAX", 90.0),
-    "sampling_frequency": float(getattr(config, "DEFAULT_SAMPLING_FREQUENCY", 1.0)),
+    "sampling_frequency": float(getattr(config, "DEFAULT_SAMPLING_FREQUENCY", 5.0)),
 }
 app = dash.Dash(
     __name__,
@@ -297,21 +297,6 @@ app.layout = html.Div(
             ],
         ),
         html.Div(
-            className="ccam-hero",
-            children=[
-                html.Div(
-                    className="ccam-hero-content",
-                    children=[
-                        html.Div("CCAM Thermocouple Monitor", className="ccam-hero-title"),
-                        html.Div(
-                            "Commonwealth Center for Advanced Manufacturing • Real-time furnace monitoring and recording",
-                            className="ccam-hero-subtitle",
-                        ),
-                    ],
-                )
-            ],
-        ),
-        html.Div(
             id="data-mode-banner",
             className="data-mode-banner data-mode-live",
             children="Live hardware data",
@@ -330,7 +315,6 @@ app.layout = html.Div(
                                     children=[
                                         html.Div(
                                             children=[
-                                                html.H2("Live Temperature Chart", className="panel-title"),
                                                 html.Div("Real-time temperatures from MCC E-TC", className="panel-subtitle"),
                                             ]
                                         ),
@@ -965,6 +949,9 @@ def update_temps(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, sto
             timer_data["done"] = True
     elif started_ts:
         timer_readout = "REC"
+    ch0_hit = safe_temps[0] is not None and safe_temps[0] >= live_cfg["setpoint"]
+    ch1_hit = safe_temps[1] is not None and safe_temps[1] >= live_cfg["setpoint"]
+    ch2_hit = safe_temps[2] is not None and safe_temps[2] >= live_cfg["setpoint"]
 
     ch0_hit = safe_temps[0] is not None and safe_temps[0] >= live_cfg["setpoint"]
     ch1_hit = safe_temps[1] is not None and safe_temps[1] >= live_cfg["setpoint"]

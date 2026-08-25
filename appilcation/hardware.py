@@ -7,9 +7,12 @@ except Exception:
 
 
 class MCCThermocouple:
-    def __init__(self, device_ip="192.168.0.101", board_num=0):
+    def __init__(self, device_ip="169.254.69.179", board_num=0, interface_name="eth0", port=54211):
         self.device_ip = device_ip
         self.board_num = board_num
+        self.interface_name = interface_name
+        self.port = port
+
         self.connected = False
         self.device = None
         self.ai_device = None
@@ -18,6 +21,7 @@ class MCCThermocouple:
         self._last_logged_error = None
         self.ever_had_real_data = False
         self.last_real_data_ts = None
+
         self.scale = ul.TempScale.CELSIUS if ul else None
         self.thermocouple_type = ul.TcType.R if ul else None
 
@@ -34,10 +38,10 @@ class MCCThermocouple:
         try:
             import numpy as np
             noise = np.random.normal(0, 0.5, count)
-            return [72.5 + (2.0 * idx) + noise[idx] for idx in range(count)]
+            return [22.5 + (2.0 * idx) + float(noise[idx]) for idx in range(count)]
         except Exception:
             import random
-            return [72.5 + (2.0 * idx) + random.gauss(0, 0.5) for idx in range(count)]
+            return [22.5 + (2.0 * idx) + random.gauss(0, 0.5) for idx in range(count)]
 
     def _mark_real_data(self):
         self.ever_had_real_data = True
@@ -52,46 +56,38 @@ class MCCThermocouple:
             self._log_once(self.last_error)
             return False
 
+        if self.connected and self.device is not None and self.ai_device is not None:
+            return True
+
         try:
-            devices = ul.get_daq_device_inventory(ul.InterfaceType.ETHERNET)
-            if not devices:
-                devices = ul.get_daq_device_inventory(ul.InterfaceType.ANY)
+            desc = ul.get_net_daq_device_descriptor(
+                self.device_ip,
+                self.port,
+                self.interface_name
+            )
 
-            if not devices:
-                self.connected = False
-                self.simulation_mode = True
-                self.last_error = "No MCC device found."
-                self._log_once(self.last_error)
-                return False
-
-            chosen = None
-            for d in devices:
-                if self.device_ip and self.device_ip in str(d):
-                    chosen = d
-                    break
-            if chosen is None:
-                chosen = devices[0]
-
-            self.device = ul.DaqDevice(chosen)
+            self.device = ul.DaqDevice(desc)
             self.device.connect(connection_code=0)
+
             self.ai_device = self.device.get_ai_device()
             if self.ai_device is None:
                 raise RuntimeError("AI device not available")
 
             ai_config = self.ai_device.get_config()
             info = self.ai_device.get_info()
+
             for ch in range(info.get_num_chans()):
                 try:
                     ai_config.set_chan_type(ch, ul.AiChanType.TC)
                     ai_config.set_chan_tc_type(ch, self.thermocouple_type)
-                except Exception:
-                    pass
+                except Exception as e:
+                    self._log_once(f"Channel {ch} config warning: {e}")
 
             self.connected = True
             self.simulation_mode = False
             self.last_error = None
             self._last_logged_error = None
-            print(f"Connected to device: {chosen}")
+            print(f"Connected to device: {desc}")
             return True
 
         except Exception as e:
@@ -99,15 +95,19 @@ class MCCThermocouple:
             self._log_once(self.last_error)
             self.connected = False
             self.simulation_mode = True
+            self.device = None
+            self.ai_device = None
             return False
 
     def disconnect(self):
         try:
-            if self.device is not None:
+            if self.device is not None and self.device.is_connected():
                 self.device.disconnect()
+            if self.device is not None:
                 self.device.release()
         except Exception:
             pass
+
         self.device = None
         self.ai_device = None
         self.connected = False
@@ -123,11 +123,11 @@ class MCCThermocouple:
     def read_channels(self, channels=None):
         if channels is None:
             channels = [0, 1, 2, 3, 4, 5, 6, 7]
-            
-        if not self.connected or not self.device:
-            self.connect
 
-        if not self.connected or not self.device:
+        if not self.connected or self.device is None or self.ai_device is None:
+            self.connect()
+
+        if not self.connected or self.device is None or self.ai_device is None:
             self.simulation_mode = True
             self.last_error = "Hardware/library unavailable; using simulated data."
             self._log_once(self.last_error)
@@ -141,6 +141,15 @@ class MCCThermocouple:
             for ch in channels:
                 try:
                     readings.append(self._read_hardware_channel(ch))
+                except ul.ULException as ch_error:
+                    if ch_error.error_code == ul.ULError.OPEN_CONNECTION:
+                        readings.append(None)
+                        failures += 1
+                        failure_messages.append(f"ch{ch}: Open Connection")
+                    else:
+                        readings.append(None)
+                        failures += 1
+                        failure_messages.append(f"ch{ch}: {ch_error}")
                 except Exception as ch_error:
                     readings.append(None)
                     failures += 1
@@ -150,7 +159,9 @@ class MCCThermocouple:
                 self._mark_real_data()
                 if failures > 0:
                     self.last_error = f"Partial read failure on {failures} channel(s)."
-                    self._log_once(self.last_error)
+                    self._log_once(self.last_error + " " + " | ".join(failure_messages))
+                else:
+                    self.last_error = None
                 return readings
 
             self.simulation_mode = False
@@ -178,6 +189,8 @@ class MCCThermocouple:
         print("\n=== MCC E-TC Hardware Test ===")
         print(f"Device IP: {self.device_ip}")
         print(f"Board Number: {self.board_num}")
+        print(f"Interface: {self.interface_name}")
+        print(f"Port: {self.port}")
 
         if not self.connect():
             print("Failed to connect to device")
@@ -187,7 +200,7 @@ class MCCThermocouple:
         temps = self.read_all_channels()
 
         for i, value in enumerate(temps):
-            print(f"Channel {i}: {value if value is not None else 'N/A'}")
+            print(f"Channel {i}: {value if value is not None else 'Open/Unavailable'}")
 
         print("Currently using simulated data" if self.simulation_mode else "Hardware test complete")
         self.disconnect()
@@ -195,5 +208,10 @@ class MCCThermocouple:
 
 
 if __name__ == "__main__":
-    device = MCCThermocouple(device_ip="192.168.0.101", board_num=0)
+    device = MCCThermocouple(
+        device_ip="169.254.69.179",
+        board_num=0,
+        interface_name="eth0",
+        port=54211
+    )
     device.test_read()
