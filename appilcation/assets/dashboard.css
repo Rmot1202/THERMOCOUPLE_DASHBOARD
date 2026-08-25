@@ -67,7 +67,7 @@ input:focus{
 }
 
 .brand{display:flex;align-items:center;gap:10px}
-.brand-logo{width:42px;height:34px;display:block;object-fit:contain;background:#fff;border:1px solid var(--border);border-radius:6px;padding:2px}
+.brand-logo{width:82px;height:42px;display:block;object-fit:contain;background:#fff;border:1px solid var(--border);border-radius:6px;padding:3px}
 .brand-copy{display:flex;flex-direction:column}
 
 .brand-title{font-size:18px;font-weight:700;line-height:1.1}

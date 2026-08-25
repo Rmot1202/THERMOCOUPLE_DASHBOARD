@@ -251,8 +251,8 @@ app.layout = html.Div(
                         html.Div(
                             children=[
                                 html.Img(
-                                    src="/assets/images.jfif",
-                                    alt="CCAM logo",
+                                    src="/assets/commonwealth_center_for_advanced_manufacturing_logo.jfif",
+                                    alt="Commonwealth Center for Advanced Manufacturing logo",
                                     className="brand-logo",
                                 ),
                                 html.Div(
