@@ -103,7 +103,8 @@ def test_load_selected_profile_returns_expected_config(tmp_path, monkeypatch):
     assert outputs[4] == 60.0
     assert outputs[5] == 100.0
     assert outputs[6] == 1.5
-    assert outputs[7] == "Loaded Furnace 4"
+    assert outputs[7] == dash_app.DEFAULT_CONFIG["thermocouple_type"]
+    assert outputs[8] == "Loaded Furnace 4"
 
 
 def test_toggle_save_modal_respects_trigger(monkeypatch):

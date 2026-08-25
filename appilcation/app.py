@@ -42,6 +42,7 @@ BASE_PATH = os.getenv("DASH_BASE_PATHNAME", "/")
 DEFAULT_CONFIG = {
     "furnace_id": getattr(config, "DEFAULT_FURNACE_ID", "1"),
     "furnace_number": getattr(config, "DEFAULT_FURNACE_NUMBER", 1),
+    "thermocouple_type": getattr(config, "DEFAULT_THERMOCOUPLE_TYPE", "R"),
     "setpoint": getattr(config, "DEFAULT_SETPOINT", 75.0),
     "lower_bound": getattr(config, "DEFAULT_LOWER_BOUND", 70.0),
     "upper_bound": getattr(config, "DEFAULT_UPPER_BOUND", 80.0),
@@ -179,12 +180,13 @@ def furnace_id_to_number(fid):
         return int(DEFAULT_CONFIG.get("furnace_number", 1))
 
 
-def build_live_cfg(furnace, setpoint, lower, upper, y_min, y_max, sampling):
+def build_live_cfg(furnace, setpoint, lower, upper, y_min, y_max, sampling, thermocouple_type="R"):
     furnace_id = parse_furnace_id(furnace)
     furnace_num = furnace_id_to_number(furnace_id)
     cfg = {
         "furnace_id": furnace_id,
         "furnace_number": furnace_num,
+        "thermocouple_type": str(thermocouple_type or DEFAULT_CONFIG["thermocouple_type"]).upper(),
         "setpoint": float(setpoint) if setpoint is not None else DEFAULT_CONFIG["setpoint"],
         "lower_bound": float(lower) if lower is not None else DEFAULT_CONFIG["lower_bound"],
         "upper_bound": float(upper) if upper is not None else DEFAULT_CONFIG["upper_bound"],
@@ -397,6 +399,18 @@ app.layout = html.Div(
                                                 html.Div(id="temp-2", className="temp-value temp-purple", children="--"),
                                             ],
                                         ),
+                                        html.Div(
+                                            [
+                                                dbc.Label("Thermocouple Type", className="field-label"),
+                                                dcc.Dropdown(
+                                                    id="cfg-thermocouple-type",
+                                                    options=[{"label": f"Type {name}", "value": name} for name in "JKTERSBN"],
+                                                    value=loaded_cfg.get("thermocouple_type", DEFAULT_CONFIG["thermocouple_type"]),
+                                                    clearable=False,
+                                                    className="compact-dropdown",
+                                                ),
+                                            ],
+                                        ),
                                     ],
                                 ),
                             ],
@@ -607,6 +621,7 @@ def update_interval_from_sampling(sampling):
         Output("cfg-ymin", "value"),
         Output("cfg-ymax", "value"),
         Output("cfg-sampling", "value"),
+        Output("cfg-thermocouple-type", "value"),
         Output("profile-status", "children"),
     ],
     Input("profile-select", "value"),
@@ -628,6 +643,7 @@ def load_selected_profile(profile_filename):
         cfg.get("y_min", DEFAULT_CONFIG["y_min"]),
         cfg.get("y_max", DEFAULT_CONFIG["y_max"]),
         cfg.get("sampling_frequency", DEFAULT_CONFIG["sampling_frequency"]),
+        cfg.get("thermocouple_type", DEFAULT_CONFIG["thermocouple_type"]),
         f"Loaded Furnace {furnace_id}",
     )
 
@@ -783,14 +799,15 @@ def toggle_save_modal(btn_save, btn_cancel, btn_confirm, is_open):
     State("cfg-ymin", "value"),
     State("cfg-ymax", "value"),
     State("cfg-sampling", "value"),
+    State("cfg-thermocouple-type", "value"),
     prevent_initial_call=True,
 )
-def prepare_save_as_with_config(n, furnace, setpoint, lower, upper, y_min, y_max, sampling):
+def prepare_save_as_with_config(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, thermocouple_type):
     files = sorted(RECORDINGS_DIR.glob("TUS_*.txt"), key=lambda x: x.stat().st_mtime, reverse=True)
     if not files:
         return {"filename": None, "content": ""}, list_profile_options()
 
-    cfg = build_live_cfg(furnace, setpoint, lower, upper, y_min, y_max, sampling)
+    cfg = build_live_cfg(furnace, setpoint, lower, upper, y_min, y_max, sampling, thermocouple_type)
     save_config(cfg)
 
     profile_name = f"furnace_{cfg['furnace_id']}"
@@ -842,13 +859,17 @@ def prepare_save_as_with_config(n, furnace, setpoint, lower, upper, y_min, y_max
     State("recording-store", "data"),
     State("timer-store", "data"),
     State("alert-options", "value"),
+    State("cfg-thermocouple-type", "value"),
 )
-def update_temps(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, store, rec_data, timer_data=_OMITTED, alert_options=_OMITTED):
+def update_temps(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, store, rec_data, timer_data=_OMITTED, alert_options=_OMITTED, thermocouple_type=_OMITTED):
     legacy_call = timer_data is _OMITTED and alert_options is _OMITTED
     if timer_data is _OMITTED:
         timer_data = None
     if alert_options is _OMITTED:
         alert_options = None
+    if thermocouple_type is _OMITTED:
+        thermocouple_type = DEFAULT_CONFIG["thermocouple_type"]
+    hardware.set_thermocouple_type(thermocouple_type)
     now_dt = datetime.now()
     now = now_dt.strftime("%H:%M:%S")
     safe_temps = read_live_temps()
@@ -859,7 +880,7 @@ def update_temps(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, sto
     ch1 = store.get("ch1", [])
     ch2 = store.get("ch2", [])
 
-    live_cfg = build_live_cfg(furnace, setpoint, lower, upper, y_min, y_max, sampling)
+    live_cfg = build_live_cfg(furnace, setpoint, lower, upper, y_min, y_max, sampling, thermocouple_type)
 
     if any(v is not None for v in safe_temps):
         times.append(now)

@@ -1,17 +1,16 @@
 import time
 
 try:
-    import mcculw
-    ul = getattr(mcculw, "ul", None)
-    _LEGACY_UL = ul is not None
-except Exception:
+    import uldaq as ul
+    _LEGACY_UL = False
+except Exception as uldaq_error:
     try:
-        import uldaq as ul
-        _LEGACY_UL = False
+        from mcculw import ul
+        _LEGACY_UL = True
     except Exception:
         ul = None
         _LEGACY_UL = False
-
+        print(f"Neither uldaq nor mcculw.ul could be imported: {uldaq_error}")
 _UL_EXCEPTION = getattr(ul, "ULException", type("_ULException", (Exception,), {}))
 
 
@@ -31,6 +30,7 @@ class MCCThermocouple:
         self._last_logged_error = None
         self.ever_had_real_data = False
         self.last_real_data_ts = None
+        self.thermocouple_type_name = "R"
 
         self.scale = getattr(getattr(ul, "TempScale", None), "CELSIUS", None) if ul else None
         self.thermocouple_type = getattr(getattr(ul, "TcType", None), "R", None) if ul else None
@@ -132,6 +132,32 @@ class MCCThermocouple:
         self.simulation_mode = True
         self._log_once("Disconnected from MCC device")
         return True
+
+    def set_thermocouple_type(self, type_name):
+        """Apply a thermocouple type to every configured analog channel."""
+
+        type_name = str(type_name or "R").upper()
+        tc_types = getattr(self.ul, "TcType", None) if self.ul else None
+        selected_type = getattr(tc_types, type_name, None) if tc_types else None
+        if selected_type is None:
+            type_name = "R"
+            selected_type = getattr(tc_types, type_name, self.thermocouple_type)
+
+        self.thermocouple_type_name = type_name
+        self.thermocouple_type = selected_type
+        if not self.connected or self.ai_device is None or _LEGACY_UL:
+            return False
+
+        try:
+            ai_config = self.ai_device.get_config()
+            info = self.ai_device.get_info()
+            for channel in range(info.get_num_chans()):
+                ai_config.set_chan_tc_type(channel, selected_type)
+            return True
+        except Exception as error:
+            self.last_error = f"Could not set thermocouple type: {error}"
+            self._log_once(self.last_error)
+            return False
 
     def _read_hardware_channel(self, ch):
         if _LEGACY_UL:
