@@ -49,6 +49,7 @@ DEFAULT_CONFIG = {
     "y_max": getattr(config, "DEFAULT_Y_MAX", 90.0),
     "sampling_frequency": float(getattr(config, "DEFAULT_SAMPLING_FREQUENCY", 5.0)),
 }
+_OMITTED = object()
 app = dash.Dash(
     __name__,
     external_stylesheets=[dbc.themes.BOOTSTRAP],
@@ -111,7 +112,7 @@ def load_profile_file(filename):
         loaded = json.load(f)
     merged = DEFAULT_CONFIG.copy()
     merged.update(loaded)
-    fid = merged.get("furnace_id") or merged.get("furnace_number")
+    fid = loaded.get("furnace_id") or loaded.get("furnace_number")
     merged["furnace_id"] = str(fid if fid is not None else DEFAULT_CONFIG["furnace_id"]).strip()
     return merged
 
@@ -618,8 +619,9 @@ def load_selected_profile(profile_filename):
     cfg = load_profile_file(profile_filename)
     furnace_id = cfg.get("furnace_id") or cfg.get("furnace_number", DEFAULT_CONFIG["furnace_number"])
 
+    furnace_value = furnace_id_to_number(furnace_id) if str(furnace_id).strip().isdigit() else str(furnace_id)
     return (
-        str(furnace_id),
+        furnace_value,
         cfg.get("setpoint", DEFAULT_CONFIG["setpoint"]),
         cfg.get("lower_bound", DEFAULT_CONFIG["lower_bound"]),
         cfg.get("upper_bound", DEFAULT_CONFIG["upper_bound"]),
@@ -646,11 +648,13 @@ def load_selected_profile(profile_filename):
     State("timer-store", "data"),
     prevent_initial_call=True,
 )
-def handle_recording(start_n, stop_n, furnace, rec_data, timer_data):
+def handle_recording(start_n, stop_n, furnace, rec_data, timer_data=_OMITTED):
+    legacy_call = timer_data is _OMITTED
     if not ctx.triggered_id:
         raise PreventUpdate
 
     rec_data = rec_data or {"active": False, "filename": None}
+    timer_data = None if legacy_call else timer_data
     timer_data = timer_data or {
         "duration_hours": None,
         "target_ts": None,
@@ -677,14 +681,16 @@ def handle_recording(start_n, stop_n, furnace, rec_data, timer_data):
         if not timer_data.get("recording_started_ts"):
             timer_data["recording_started_ts"] = datetime.now().timestamp()
 
-        return True, False, "Status: Recording", f"File: {filename}", rec_data, timer_data
+        result = True, False, "Status: Recording", f"File: {filename}", rec_data, timer_data
+        return result[:5] if legacy_call else result
 
     if button == "btn-stop":
         rec_data["active"] = False
         timer_data["active"] = False
         timer_data["target_ts"] = None
         filename = rec_data.get("filename", "unknown")
-        return False, True, "Status: Idle", f"Saved: {filename}", rec_data, timer_data
+        result = False, True, "Status: Idle", f"Saved: {filename}", rec_data, timer_data
+        return result[:5] if legacy_call else result
 
     raise PreventUpdate
 
@@ -837,7 +843,12 @@ def prepare_save_as_with_config(n, furnace, setpoint, lower, upper, y_min, y_max
     State("timer-store", "data"),
     State("alert-options", "value"),
 )
-def update_temps(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, store, rec_data, timer_data, alert_options):
+def update_temps(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, store, rec_data, timer_data=_OMITTED, alert_options=_OMITTED):
+    legacy_call = timer_data is _OMITTED and alert_options is _OMITTED
+    if timer_data is _OMITTED:
+        timer_data = None
+    if alert_options is _OMITTED:
+        alert_options = None
     now_dt = datetime.now()
     now = now_dt.strftime("%H:%M:%S")
     safe_temps = read_live_temps()
@@ -986,7 +997,7 @@ def update_temps(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, sto
         alert_text = f"Timer reached. Setpoint reached: {', '.join(reached_channels)}"
         alert_class = "alert-strip alert-warning"
 
-    return (
+    result = (
         fmt_temp(safe_temps[0]),
         fmt_temp(safe_temps[1]),
         fmt_temp(safe_temps[2]),
@@ -1012,6 +1023,7 @@ def update_temps(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, sto
         temp2_class,
         timer_data,
     )
+    return result[:15] if legacy_call else result
 
 
 clientside_callback(

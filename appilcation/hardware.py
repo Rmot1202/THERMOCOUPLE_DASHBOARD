@@ -1,9 +1,18 @@
 import time
 
 try:
-    import uldaq as ul
+    import mcculw
+    ul = getattr(mcculw, "ul", None)
+    _LEGACY_UL = ul is not None
 except Exception:
-    ul = None
+    try:
+        import uldaq as ul
+        _LEGACY_UL = False
+    except Exception:
+        ul = None
+        _LEGACY_UL = False
+
+_UL_EXCEPTION = getattr(ul, "ULException", type("_ULException", (Exception,), {}))
 
 
 class MCCThermocouple:
@@ -12,6 +21,7 @@ class MCCThermocouple:
         self.board_num = board_num
         self.interface_name = interface_name
         self.port = port
+        self.ul = ul
 
         self.connected = False
         self.device = None
@@ -22,12 +32,14 @@ class MCCThermocouple:
         self.ever_had_real_data = False
         self.last_real_data_ts = None
 
-        self.scale = ul.TempScale.CELSIUS if ul else None
-        self.thermocouple_type = ul.TcType.R if ul else None
+        self.scale = getattr(getattr(ul, "TempScale", None), "CELSIUS", None) if ul else None
+        self.thermocouple_type = getattr(getattr(ul, "TcType", None), "R", None) if ul else None
 
         if ul is None:
             self.last_error = "uldaq library unavailable"
             self._log_once(self.last_error)
+        elif _LEGACY_UL:
+            self.connected = True
 
     def _log_once(self, message):
         if message != self._last_logged_error:
@@ -55,6 +67,12 @@ class MCCThermocouple:
             self.last_error = "uldaq library not available. Using simulation mode."
             self._log_once(self.last_error)
             return False
+
+        if _LEGACY_UL:
+            self.connected = True
+            self.simulation_mode = False
+            self.last_error = None
+            return True
 
         if self.connected and self.device is not None and self.ai_device is not None:
             return True
@@ -116,6 +134,8 @@ class MCCThermocouple:
         return True
 
     def _read_hardware_channel(self, ch):
+        if _LEGACY_UL:
+            return float(ul.t_in(self.board_num, ch, self.scale))
         if self.ai_device is None:
             raise RuntimeError("AI device not available")
         return float(self.ai_device.t_in(ch, self.scale))
@@ -124,10 +144,10 @@ class MCCThermocouple:
         if channels is None:
             channels = [0, 1, 2, 3, 4, 5, 6, 7]
 
-        if not self.connected or self.device is None or self.ai_device is None:
+        if not self.connected or (not _LEGACY_UL and (self.device is None or self.ai_device is None)):
             self.connect()
 
-        if not self.connected or self.device is None or self.ai_device is None:
+        if not self.connected or (not _LEGACY_UL and (self.device is None or self.ai_device is None)):
             self.simulation_mode = True
             self.last_error = "Hardware/library unavailable; using simulated data."
             self._log_once(self.last_error)
@@ -141,7 +161,7 @@ class MCCThermocouple:
             for ch in channels:
                 try:
                     readings.append(self._read_hardware_channel(ch))
-                except ul.ULException as ch_error:
+                except _UL_EXCEPTION as ch_error:
                     if ch_error.error_code == ul.ULError.OPEN_CONNECTION:
                         readings.append(None)
                         failures += 1
@@ -164,10 +184,10 @@ class MCCThermocouple:
                     self.last_error = None
                 return readings
 
-            self.simulation_mode = False
-            self.last_error = "All channels returned None."
+            self.simulation_mode = True
+            self.last_error = "All hardware channel reads failed."
             self._log_once(self.last_error + " Details: " + " | ".join(failure_messages))
-            return readings
+            return self._simulate(len(channels))
 
         except Exception as e:
             self.last_error = f"Error reading channels: {e}"
