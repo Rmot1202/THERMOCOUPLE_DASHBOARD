@@ -248,7 +248,6 @@ app.layout = html.Div(
                 html.Div(
                     className="brand",
                     children=[
-                        html.Div("CCAM", className="ccam-wordmark"),
                         html.Div(
                             children=[
                                 html.Div("Thermocouple Monitor", className="brand-title"),
@@ -265,11 +264,6 @@ app.layout = html.Div(
                     ],
                 ),
             ],
-        ),
-        html.Div(
-            id="data-mode-banner",
-            className="data-mode-banner data-mode-live",
-            children="Live hardware data",
         ),
         html.Div(
             className="dashboard-grid",
@@ -742,8 +736,6 @@ def prepare_save_as_with_config(n, furnace, setpoint, lower, upper, y_min, y_max
         Output("machine-label", "children"),
         Output("clock", "children"),
         Output("device-info", "children"),
-        Output("data-mode-banner", "children"),
-        Output("data-mode-banner", "className"),
         Output("rec-status", "children"),
         Output("rec-file", "children"),
         Output("recording-store", "data"),
@@ -810,15 +802,11 @@ def update_temps(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, sto
     fig = make_figure(new_store, live_cfg)
 
     if getattr(hardware, "simulation_mode", False):
-        status_text = "Simulation / MCC board not detected"
+        status_text = "Simulation"
         status_class = "status-pill status-warn"
-        banner_text = "Simulation mode — live MCC hardware not detected"
-        banner_class = "data-mode-banner data-mode-sim"
     else:
         status_text = "Connected"
         status_class = "status-pill status-ok"
-        banner_text = "Live hardware data"
-        banner_class = "data-mode-banner data-mode-live"
 
     footer_info = (
         f"Board {hardware.board_num} • IP {hardware.device_ip or 'local'}"
@@ -939,8 +927,6 @@ def update_temps(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, sto
         machine_label,
         now,
         footer_info,
-        banner_text,
-        banner_class,
         rec_status,
         rec_file,
         rec_data or {"active": False, "filename": None},
@@ -954,7 +940,7 @@ def update_temps(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, sto
         temp2_class,
         timer_data,
     )
-    return result[:15] if legacy_call else result
+    return result[:13] if legacy_call else result
 
 
 clientside_callback(

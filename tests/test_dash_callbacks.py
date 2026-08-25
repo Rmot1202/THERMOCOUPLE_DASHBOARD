@@ -43,7 +43,7 @@ def test_handle_recording_start_and_stop(monkeypatch, tmp_path):
     assert stopped_rec_data["filename"] == updated_rec_data["filename"]
 
 
-def test_update_temps_writes_recording_and_simulation_banner(monkeypatch, tmp_path):
+def test_update_temps_writes_recording_and_simulation_status(monkeypatch, tmp_path):
     """Temperature updates should record rows and show simulation state."""
 
     temp_data = [12.3, 13.4, 14.5]
@@ -67,15 +67,14 @@ def test_update_temps_writes_recording_and_simulation_banner(monkeypatch, tmp_pa
         rec_data=record_state,
     )
 
-    temp0, temp1, temp2, fig, new_store, status_text, status_class, machine_label, now, device_info, banner_text, banner_class, rec_status, rec_file, updated_rec_data = outputs
+    temp0, temp1, temp2, fig, new_store, status_text, status_class, machine_label, now, device_info, rec_status, rec_file, updated_rec_data = outputs
 
     assert temp0 != "--"
     assert temp1 != "--"
     assert temp2 != "--"
     assert rec_status == "Status: Recording"
     assert rec_file == "File: live_test.txt"
-    assert banner_text == "Simulation mode — live MCC hardware not detected"
-    assert banner_class == "data-mode-banner data-mode-sim"
+    assert status_text == "Simulation"
     assert updated_rec_data["active"] is True
     assert updated_rec_data["filename"] == "live_test.txt"
     assert (tmp_path / "live_test.txt").exists()
