@@ -281,7 +281,7 @@ input:focus{
 
 .alert-strip{
   border-radius:12px;
-  padding:7px 14px;
+  padding:5px 10px;
   font-size:13px;
   font-weight:600;
   border:1px solid var(--border);
@@ -289,6 +289,10 @@ input:focus{
 }
 
 .bounds-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:8px}
+.chart-panel .axis-row{gap:8px!important;margin-bottom:5px!important}
+.chart-panel .field-label{font-size:10px;margin-bottom:3px}
+.chart-panel input{height:32px;font-size:12px}
+.chart-panel .bounds-row{gap:8px;margin-bottom:5px}
 
 .alert-info{
   background:#eff6ff;
