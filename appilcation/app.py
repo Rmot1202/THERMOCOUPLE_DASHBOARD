@@ -368,6 +368,35 @@ app.layout = html.Div(
                                         ),
                                     ],
                                 ),
+                            ],
+                        ),
+                    ],
+                ),
+                html.Aside(
+                    className="sidebar",
+                    children=[
+                        html.Section(
+                            className="panel sidebar-panel",
+                            children=[
+                                html.H3("Furnace Profile", className="side-title"),
+                                dbc.Label("Furnace ID", className="field-label"),
+                                dbc.Input(
+                                    id="cfg-furnace",
+                                    type="text",
+                                    value=loaded_cfg.get(
+                                        "furnace_id",
+                                        str(loaded_cfg.get("furnace_number", DEFAULT_CONFIG["furnace_number"])),
+                                    ),
+                                    className="field-input",
+                                ),
+                                dbc.Label("Thermocouple Type", className="field-label mt-3"),
+                                dcc.Dropdown(
+                                    id="cfg-thermocouple-type",
+                                    options=[{"label": f"Type {name}", "value": name} for name in "JKTERSBN"],
+                                    value=loaded_cfg.get("thermocouple_type", DEFAULT_CONFIG["thermocouple_type"]),
+                                    clearable=False,
+                                    className="compact-dropdown",
+                                ),
                                 html.Div(
                                     className="recording-panel",
                                     children=[
@@ -397,35 +426,6 @@ app.layout = html.Div(
                                         html.Div(id="rec-file", className="muted-line"),
                                         html.Div(id="save-status", className="muted-line"),
                                     ],
-                                ),
-                            ],
-                        ),
-                    ],
-                ),
-                html.Aside(
-                    className="sidebar",
-                    children=[
-                        html.Section(
-                            className="panel sidebar-panel",
-                            children=[
-                                html.H3("Furnace Profile", className="side-title"),
-                                dbc.Label("Furnace ID", className="field-label"),
-                                dbc.Input(
-                                    id="cfg-furnace",
-                                    type="text",
-                                    value=loaded_cfg.get(
-                                        "furnace_id",
-                                        str(loaded_cfg.get("furnace_number", DEFAULT_CONFIG["furnace_number"])),
-                                    ),
-                                    className="field-input",
-                                ),
-                                dbc.Label("Thermocouple Type", className="field-label mt-3"),
-                                dcc.Dropdown(
-                                    id="cfg-thermocouple-type",
-                                    options=[{"label": f"Type {name}", "value": name} for name in "JKTERSBN"],
-                                    value=loaded_cfg.get("thermocouple_type", DEFAULT_CONFIG["thermocouple_type"]),
-                                    clearable=False,
-                                    className="compact-dropdown",
                                 ),
                             ],
                         ),
