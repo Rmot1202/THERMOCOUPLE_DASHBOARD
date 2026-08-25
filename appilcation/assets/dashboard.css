@@ -341,6 +341,10 @@ input:focus{
 .sidebar-panel{padding:10px}
 .side-title{margin:0 0 14px 0;font-size:16px;font-weight:700}
 .compact-dropdown .Select-control{min-height:42px;border-color:var(--border)}
+.sidebar > .sidebar-panel:first-child{padding:8px 10px}
+.sidebar > .sidebar-panel:first-child .side-title{margin-bottom:8px;font-size:14px}
+.sidebar > .sidebar-panel:first-child .muted-line{margin-top:6px}
+.device-info-hidden{display:none}
 .field-label{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px}
 .field-input{width:100%}
 

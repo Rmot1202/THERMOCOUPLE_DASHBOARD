@@ -318,7 +318,7 @@ app.layout = html.Div(
                                     children=[
                                         html.Div(
                                             children=[
-                                                html.Div("Real-time temperatures from MCC E-TC", className="panel-subtitle"),
+                                                html.H2("Real-time temperatures from MCC E-TC", className="panel-title"),
                                             ]
                                         ),
                                         html.Div(
@@ -587,13 +587,7 @@ app.layout = html.Div(
                 ),
             ],
         ),
-        html.Footer(
-            className="footer",
-            children=[
-                html.Div("Thermocouple Dashboard v2.5", className="footer-left"),
-                html.Div(id="device-info", className="footer-right"),
-            ],
-        ),
+        html.Div(id="device-info", className="device-info-hidden"),
     ],
 )
 
