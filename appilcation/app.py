@@ -250,8 +250,18 @@ app.layout = html.Div(
                     children=[
                         html.Div(
                             children=[
-                                html.Div("Thermocouple Monitor", className="brand-title"),
-                                html.Div(id="machine-label", className="brand-subtitle"),
+                                html.Img(
+                                    src="/assets/images.jfif",
+                                    alt="CCAM logo",
+                                    className="brand-logo",
+                                ),
+                                html.Div(
+                                    children=[
+                                        html.Div("Thermocouple Monitor", className="brand-title"),
+                                        html.Div(id="machine-label", className="brand-subtitle"),
+                                    ],
+                                    className="brand-copy",
+                                ),
                             ]
                         ),
                     ],
