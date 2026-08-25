@@ -45,30 +45,7 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Deploy, reload Nginx, and restart dashboard
+      - name: Deploy dashboard
         run: |
           set -euo pipefail
-
-          APP_DIR=/home/CCAM/raven.mott/Desktop/Thermocouple_dashboard
-          VENV_DIR="$APP_DIR/venv"
-
-          sudo /bin/systemctl stop thermocouple-dashboard
-
-          sudo /usr/bin/rsync -a --delete \
-            --exclude '.git/' \
-            --exclude 'venv/' \
-            --exclude '.venv/' \
-            --exclude '.ci-venv/' \
-            --exclude 'storage/' \
-            ./ "$APP_DIR/"
-
-          "$VENV_DIR/bin/python" -m pip install -r "$APP_DIR/requirements.txt"
-
-          sudo /usr/sbin/nginx -t
-          sudo /bin/systemctl reload nginx
-
-          sudo /bin/systemctl start thermocouple-dashboard
-          sudo /bin/systemctl is-active --quiet thermocouple-dashboard
-          sudo /bin/systemctl is-active --quiet nginx
-
-          curl --fail --retry 10 --retry-delay 2 http://127.0.0.1:8050/
+          sudo /usr/local/sbin/deploy-thermocouple-dashboard "$GITHUB_WORKSPACE"
