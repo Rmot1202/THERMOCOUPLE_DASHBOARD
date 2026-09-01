@@ -85,6 +85,20 @@ def save_config(cfg):
         json.dump(cfg, f, indent=2)
 
 
+def save_recording_to_directory(filename, content, output_dir=None):
+    """Persist a text recording to a chosen output directory, defaulting to the app storage folder."""
+
+    safe_name = Path(filename or "thermocouple_recording.txt").name
+    if not safe_name:
+        safe_name = "thermocouple_recording.txt"
+
+    target_dir = Path(output_dir) if output_dir else RECORDINGS_DIR
+    target_dir.mkdir(parents=True, exist_ok=True)
+    destination = target_dir / safe_name
+    destination.write_text(content or "", encoding="utf-8")
+    return destination
+
+
 def fmt_temp(value):
     return f"{value:.3f}" if isinstance(value, (int, float)) else "--"
 
@@ -961,9 +975,18 @@ clientside_callback(
         }
 
         const content = fileData.content || "";
-        const filename = fileData.filename || "thermocouple_recording.txt";
+        const filename = (fileData.filename || "thermocouple_recording.txt").replace(/[\\/:*?\"<>|]/g, "_");
 
         try {
+            if (window.showDirectoryPicker) {
+                const directoryHandle = await window.showDirectoryPicker({ mode: "readwrite" });
+                const fileHandle = await directoryHandle.getFileHandle(filename, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(content);
+                await writable.close();
+                return `Saved to ${filename} in the selected folder.`;
+            }
+
             if (window.showSaveFilePicker) {
                 const handle = await window.showSaveFilePicker({
                     suggestedName: filename,
@@ -996,7 +1019,7 @@ clientside_callback(
         a.remove();
         URL.revokeObjectURL(url);
 
-        return "Chrome Save As was unavailable, so the file was downloaded instead.";
+        return "Directory selection was unavailable, so the file was downloaded instead.";
     }
     """,
     Output("save-status", "children"),

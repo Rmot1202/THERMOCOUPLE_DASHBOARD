@@ -7,6 +7,17 @@ import pytest
 from appilcation import app as dash_app
 
 
+def test_save_recording_to_directory_uses_selected_directory(tmp_path):
+    """Selected output folders should receive the exported recording file."""
+
+    target_dir = tmp_path / "user_chosen"
+    saved_path = dash_app.save_recording_to_directory("custom_record.txt", "sample-data", output_dir=target_dir)
+
+    assert saved_path == target_dir / "custom_record.txt"
+    assert saved_path.exists()
+    assert saved_path.read_text(encoding="utf-8") == "sample-data"
+
+
 def test_update_interval_from_sampling_clamps_low_values():
     """Sampling intervals should never exceed the minimum 0.1 Hz clamp."""
 
