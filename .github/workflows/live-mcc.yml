@@ -60,6 +60,9 @@ jobs:
     needs: test
     runs-on: [self-hosted, linux, ARM64, live-mcc]
     timeout-minutes: 10
+    env:
+      DASHBOARD_URL: https://10.0.20.21/
+      LOCAL_DASHBOARD_URL: http://127.0.0.1:8050/
     environment:
       name: live-mcc
       url: https://10.0.20.21/
@@ -79,10 +82,19 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in {1..12}; do
-            if curl --fail --insecure --silent --show-error --max-time 10 https://10.0.20.21/ >/dev/null; then
+            echo "Smoke test attempt $attempt/12: $DASHBOARD_URL"
+            if curl --fail --insecure --silent --show-error --connect-timeout 5 --max-time 10 "$DASHBOARD_URL" >/dev/null; then
+              echo "Dashboard responded at $DASHBOARD_URL"
               exit 0
             fi
             sleep 5
           done
+
           echo "Dashboard did not respond after deployment" >&2
+          echo "Checking local dashboard service..." >&2
+          curl --fail --silent --show-error --connect-timeout 5 --max-time 10 "$LOCAL_DASHBOARD_URL" >/dev/null \
+            && echo "Dashboard responded locally at $LOCAL_DASHBOARD_URL" >&2 \
+            || echo "Dashboard did not respond locally at $LOCAL_DASHBOARD_URL" >&2
+          sudo systemctl --no-pager --full status thermocouple-dashboard || true
+          sudo ss -ltnp || true
           exit 1
