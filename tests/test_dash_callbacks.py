@@ -84,8 +84,8 @@ def test_update_temps_writes_recording_and_marks_receiving(monkeypatch, tmp_path
     assert "# TUS Recording" in recorded_text or "12.300" in recorded_text
 
 
-def test_prepare_save_as_downloads_latest_recording(monkeypatch, tmp_path):
-    """Save As should return a Dash download payload for the latest recording."""
+def test_prepare_save_as_prepares_latest_recording(monkeypatch, tmp_path):
+    """Save As should prepare the latest recording for the browser file picker."""
 
     monkeypatch.setattr(dash_app, "RECORDINGS_DIR", tmp_path)
     monkeypatch.setattr(dash_app, "PROFILES_DIR", tmp_path)
@@ -94,7 +94,7 @@ def test_prepare_save_as_downloads_latest_recording(monkeypatch, tmp_path):
     latest = tmp_path / "TUS_F2_latest.txt"
     latest.write_text("sample-data", encoding="utf-8")
 
-    download_data, status = dash_app.prepare_save_as_with_config(
+    file_data = dash_app.prepare_save_as_with_config(
         n=1,
         furnace=2,
         setpoint=80,
@@ -106,6 +106,7 @@ def test_prepare_save_as_downloads_latest_recording(monkeypatch, tmp_path):
         thermocouple_type="R",
     )
 
-    assert download_data["filename"] == "TUS_F2_latest.txt"
-    assert download_data["content"] == "sample-data"
-    assert status == "Downloaded TUS_F2_latest.txt"
+    assert file_data["filename"] == "TUS_F2_latest.txt"
+    assert file_data["content"] == "sample-data"
+    assert file_data["request_id"] == 1
+    assert file_data["requested_at"]

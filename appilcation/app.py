@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 import dash
-from dash import dcc, html, Input, Output, State, ctx
+from dash import dcc, html, Input, Output, State, ctx, clientside_callback
 import dash_bootstrap_components as dbc
 from dash.exceptions import PreventUpdate
 import plotly.graph_objects as go
@@ -222,7 +222,8 @@ app.layout = html.Div(
     children=[
         dcc.Store(id="data-store", data={"times": [], "ch0": [], "ch1": [], "ch2": []}),
         dcc.Store(id="recording-store", data={"active": False, "filename": None}),
-        dcc.Download(id="download-recording"),
+        dcc.Store(id="save-file-store", data={"filename": None, "content": "", "requested_at": None}),
+        dcc.Store(id="save-picker-store", data={"request_id": None, "state": "idle"}),
         dcc.Store(
             id="timer-store",
             data={
@@ -717,8 +718,7 @@ def toggle_save_modal(btn_save, btn_cancel, btn_confirm, is_open):
 
 
 @app.callback(
-    Output("download-recording", "data"),
-    Output("save-status", "children"),
+    Output("save-file-store", "data"),
     Input("save-modal-confirm", "n_clicks"),
     State("cfg-furnace", "value"),
     State("cfg-setpoint", "value"),
@@ -731,15 +731,157 @@ def toggle_save_modal(btn_save, btn_cancel, btn_confirm, is_open):
     prevent_initial_call=True,
 )
 def prepare_save_as_with_config(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, thermocouple_type):
+    if not n:
+        raise PreventUpdate
+
     cfg = build_live_cfg(furnace, setpoint, lower, upper, y_min, y_max, sampling, thermocouple_type)
     save_config(cfg)
 
     payload = recording_payload()
     if not payload["filename"] or not payload["content"]:
-        return dash.no_update, "No recording file available."
+        return {
+            "filename": None,
+            "content": "",
+            "error": "No recording file available.",
+            "requested_at": datetime.now().isoformat(),
+            "request_id": n,
+        }
 
-    filename = Path(payload["filename"]).name
-    return dcc.send_string(payload["content"], filename), f"Downloaded {filename}"
+    payload["filename"] = Path(payload["filename"]).name
+    payload["requested_at"] = datetime.now().isoformat()
+    payload["request_id"] = n
+    return payload
+
+
+clientside_callback(
+    """
+    async function(nClicks, recordingData) {
+        if (!nClicks) {
+            return dash_clientside.no_update;
+        }
+
+        const requestId = nClicks;
+        const suggestedName = String(
+            (recordingData && recordingData.filename) || "thermocouple_recording.txt"
+        ).replace(/[\\\\/:*?"<>|]/g, "_");
+
+        window.__thermoSaveHandle = null;
+        window.__thermoSaveHandleRequestId = null;
+
+        if (!window.showSaveFilePicker) {
+            return {
+                request_id: requestId,
+                state: "unsupported",
+                requested_at: Date.now()
+            };
+        }
+
+        try {
+            const handle = await window.showSaveFilePicker({
+                suggestedName: suggestedName,
+                types: [{
+                    description: "Text files",
+                    accept: {"text/plain": [".txt"]}
+                }]
+            });
+            window.__thermoSaveHandle = handle;
+            window.__thermoSaveHandleRequestId = requestId;
+            return {
+                request_id: requestId,
+                state: "ready",
+                requested_at: Date.now()
+            };
+        } catch (error) {
+            if (error && error.name === "AbortError") {
+                return {
+                    request_id: requestId,
+                    state: "cancelled",
+                    requested_at: Date.now()
+                };
+            }
+            console.warn("Save picker failed; using browser download fallback.", error);
+            return {
+                request_id: requestId,
+                state: "error",
+                requested_at: Date.now()
+            };
+        }
+    }
+    """,
+    Output("save-picker-store", "data"),
+    Input("save-modal-confirm", "n_clicks"),
+    State("recording-store", "data"),
+    prevent_initial_call=True,
+)
+
+
+clientside_callback(
+    """
+    async function(fileData, pickerState) {
+        if (!fileData) {
+            return dash_clientside.no_update;
+        }
+
+        if (
+            !pickerState ||
+            pickerState.request_id === undefined ||
+            fileData.request_id === undefined ||
+            String(pickerState.request_id) !== String(fileData.request_id)
+        ) {
+            return dash_clientside.no_update;
+        }
+
+        if (fileData.error) {
+            return fileData.error;
+        }
+
+        if (!fileData.filename || !fileData.content) {
+            return "No recording file available.";
+        }
+
+        const filename = String(fileData.filename || "thermocouple_recording.txt")
+            .replace(/[\\\\/:*?"<>|]/g, "_");
+        const content = String(fileData.content || "");
+
+        if (pickerState.state === "cancelled") {
+            return "Save cancelled.";
+        }
+
+        try {
+            if (
+                pickerState.state === "ready" &&
+                window.__thermoSaveHandle &&
+                String(window.__thermoSaveHandleRequestId) === String(fileData.request_id)
+            ) {
+                const handle = window.__thermoSaveHandle;
+                const writable = await handle.createWritable();
+                await writable.write(content);
+                await writable.close();
+                window.__thermoSaveHandle = null;
+                window.__thermoSaveHandleRequestId = null;
+                return "Saved " + filename;
+            }
+        } catch (error) {
+            console.warn("Selected file write failed; using browser download fallback.", error);
+        }
+
+        const blob = new Blob([content], {type: "text/plain;charset=utf-8"});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        return "File picker unavailable; used browser download settings.";
+    }
+    """,
+    Output("save-status", "children"),
+    Input("save-file-store", "data"),
+    Input("save-picker-store", "data"),
+    prevent_initial_call=True,
+)
 
 
 @app.callback(
