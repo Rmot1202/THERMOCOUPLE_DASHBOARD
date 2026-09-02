@@ -58,6 +58,30 @@ def _reload_hardware_with_fake_mcculw(monkeypatch, include_ul=True, t_in_impl=No
     return importlib.reload(hardware)
 
 
+def _reload_hardware_with_fake_uldaq(monkeypatch, descriptor_impl=None):
+    """Reload the hardware module with a controlled fake uldaq package."""
+
+    fake_uldaq = types.ModuleType("uldaq")
+    fake_uldaq.TempScale = types.SimpleNamespace(CELSIUS="CELSIUS")
+    fake_uldaq.TcType = types.SimpleNamespace(R="R")
+    fake_uldaq.AiChanType = types.SimpleNamespace(TC="TC")
+    fake_uldaq.ULException = RuntimeError
+
+    def get_net_daq_device_descriptor(*args, **kwargs):
+        if descriptor_impl:
+            return descriptor_impl(*args, **kwargs)
+        raise AssertionError("uldaq descriptor lookup should not be called")
+
+    fake_uldaq.get_net_daq_device_descriptor = get_net_daq_device_descriptor
+    monkeypatch.setitem(sys.modules, "uldaq", fake_uldaq)
+
+    if "appilcation.hardware" in sys.modules:
+        del sys.modules["appilcation.hardware"]
+    import appilcation.hardware as hardware
+
+    return importlib.reload(hardware)
+
+
 def test_connect_reports_failure_when_library_missing(monkeypatch):
     """A missing MCC library should report that hardware is unavailable."""
 
@@ -127,3 +151,24 @@ def test_disconnect_clears_connection(monkeypatch):
 
     assert device.disconnect() is True
     assert device.connected is False
+
+
+def test_connect_fails_fast_when_network_device_is_unreachable(monkeypatch):
+    """An offline DAQ should not let the uldaq descriptor lookup block startup."""
+
+    hardware = _reload_hardware_with_fake_uldaq(monkeypatch)
+
+    def fake_create_connection(*args, **kwargs):
+        raise TimeoutError("timed out")
+
+    monkeypatch.setattr(hardware.socket, "create_connection", fake_create_connection)
+
+    device = hardware.MCCThermocouple(
+        device_ip="169.254.69.179",
+        connection_timeout=0.01,
+        reconnect_interval=5.0,
+    )
+
+    assert device.connect() is False
+    assert device.connected is False
+    assert "not reachable" in device.last_error.lower()

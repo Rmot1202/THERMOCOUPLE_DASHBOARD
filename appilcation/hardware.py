@@ -1,3 +1,4 @@
+import socket
 import time
 
 try:
@@ -15,11 +16,21 @@ _UL_EXCEPTION = getattr(ul, "ULException", type("_ULException", (Exception,), {}
 
 
 class MCCThermocouple:
-    def __init__(self, device_ip="169.254.69.179", board_num=0, interface_name="eth0", port=54211):
+    def __init__(
+        self,
+        device_ip="169.254.69.179",
+        board_num=0,
+        interface_name="eth0",
+        port=54211,
+        connection_timeout=1.0,
+        reconnect_interval=5.0,
+    ):
         self.device_ip = device_ip
         self.board_num = board_num
         self.interface_name = interface_name
         self.port = port
+        self.connection_timeout = float(connection_timeout)
+        self.reconnect_interval = float(reconnect_interval)
         self.ul = ul
 
         self.connected = False
@@ -27,6 +38,7 @@ class MCCThermocouple:
         self.ai_device = None
         self.last_error = None
         self._last_logged_error = None
+        self._last_connect_attempt_ts = None
         self.ever_had_real_data = False
         self.last_real_data_ts = None
         self.thermocouple_type_name = "R"
@@ -49,6 +61,23 @@ class MCCThermocouple:
         self.ever_had_real_data = True
         self.last_real_data_ts = time.time()
 
+    def _connect_retry_due(self):
+        if self._last_connect_attempt_ts is None:
+            return True
+        return (time.time() - self._last_connect_attempt_ts) >= self.reconnect_interval
+
+    def _network_device_reachable(self):
+        if not self.device_ip:
+            return True
+
+        try:
+            with socket.create_connection((self.device_ip, self.port), timeout=self.connection_timeout):
+                return True
+        except OSError as error:
+            self.last_error = f"DAQ is not reachable at {self.device_ip}:{self.port}: {error}"
+            self._log_once(self.last_error)
+            return False
+
     def connect(self):
         if ul is None:
             self.connected = False
@@ -64,7 +93,15 @@ class MCCThermocouple:
         if self.connected and self.device is not None and self.ai_device is not None:
             return True
 
+        if not self._connect_retry_due():
+            return False
+
+        self._last_connect_attempt_ts = time.time()
+
         try:
+            if not self._network_device_reachable():
+                return False
+
             desc = ul.get_net_daq_device_descriptor(
                 self.device_ip,
                 self.port,
@@ -91,6 +128,7 @@ class MCCThermocouple:
             self.connected = True
             self.last_error = None
             self._last_logged_error = None
+            self._last_connect_attempt_ts = None
             print(f"Connected to device: {desc}")
             return True
 
@@ -98,6 +136,11 @@ class MCCThermocouple:
             self.last_error = f"Could not connect to MCC device: {e}"
             self._log_once(self.last_error)
             self.connected = False
+            try:
+                if self.device is not None:
+                    self.device.release()
+            except Exception:
+                pass
             self.device = None
             self.ai_device = None
             return False

@@ -62,11 +62,6 @@ server = app.server
 
 hardware = MCCThermocouple(device_ip=DEVICE_IP)
 
-try:
-    hardware.connect()
-except Exception as e:
-    print(f"Initial hardware connect failed: {e}")
-
 def load_config():
     try:
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
@@ -1053,6 +1048,10 @@ def update_temps(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, sto
     temp1_class = "temp-value temp-red"
     temp2_class = "temp-value temp-purple"
 
+    if not has_live_data and hardware.last_error:
+        alert_text = f"DAQ status: {hardware.last_error}"
+        alert_class = "alert-strip alert-warning"
+
     started_ts = timer_data.get("recording_started_ts")
     if started_ts:
         elapsed = max(0, int(now_dt.timestamp() - float(started_ts)))
@@ -1139,7 +1138,5 @@ def update_temps(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, sto
 # layouts, callbacks, etc.
 
 if __name__ == "__main__":
-    if not hardware.connected:
-        hardware.connect()
     print("Starting Thermocouple Dashboard at http://0.0.0.0:8050/")
     app.run(debug=False, use_reloader=False, host="0.0.0.0", port=8050)
