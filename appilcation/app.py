@@ -261,21 +261,17 @@ app.layout = html.Div(
                 html.Div(
                     className="brand",
                     children=[
+                        html.Img(
+                            src="/assets/commonwealth_center_for_advanced_manufacturing_logo.jfif",
+                            alt="Commonwealth Center for Advanced Manufacturing logo",
+                            className="brand-logo",
+                        ),
                         html.Div(
                             children=[
-                                html.Img(
-                                    src="/assets/commonwealth_center_for_advanced_manufacturing_logo.jfif",
-                                    alt="Commonwealth Center for Advanced Manufacturing logo",
-                                    className="brand-logo",
-                                ),
-                                html.Div(
-                                    children=[
-                                        html.Div("Thermocouple Monitor", className="brand-title"),
-                                        html.Div(id="machine-label", className="brand-subtitle"),
-                                    ],
-                                    className="brand-copy",
-                                ),
-                            ]
+                                html.Div("Thermocouple Monitor", className="brand-title"),
+                                html.Div(id="machine-label", className="brand-subtitle"),
+                            ],
+                            className="brand-copy",
                         ),
                     ],
                 ),
@@ -283,7 +279,39 @@ app.layout = html.Div(
                     className="topbar-actions",
                     children=[
                         html.Div(id="status-indicator", className="status-pill status-warn", children="Idle"),
-                        html.Div(id="clock", className="clock"),
+                        html.Div(
+                            className="topbar-time",
+                            children=[
+                                html.Div(
+                                    className="time-chip",
+                                    children=[
+                                        html.Div("Clock", className="time-label"),
+                                        html.Div(id="clock", className="clock time-value"),
+                                    ],
+                                ),
+                                html.Div(
+                                    className="time-chip time-chip-primary",
+                                    children=[
+                                        html.Div("Timer", className="time-label"),
+                                        html.Div(id="timer-readout", className="timer-readout time-value", children="00:00:00"),
+                                    ],
+                                ),
+                                html.Div(
+                                    className="time-chip",
+                                    children=[
+                                        html.Div("Elapsed", className="time-label"),
+                                        html.Div(id="timer-subtext", className="timer-subtext time-value", children="00:00:00"),
+                                    ],
+                                ),
+                                html.Div(
+                                    className="time-chip",
+                                    children=[
+                                        html.Div("Window", className="time-label"),
+                                        html.Div(f"{GRAPH_WINDOW_SECONDS}s", className="time-value"),
+                                    ],
+                                ),
+                            ],
+                        ),
                     ],
                 ),
             ],
@@ -304,13 +332,6 @@ app.layout = html.Div(
                                             children=[
                                                 html.H2("Real-time temperatures from MCC E-TC", className="panel-title"),
                                             ]
-                                        ),
-                                        html.Div(
-                                            className="panel-meta",
-                                            children=[
-                                                html.Div("Window", className="meta-label"),
-                                                html.Div(f"{GRAPH_WINDOW_SECONDS}s", className="meta-value"),
-                                            ],
                                         ),
                                     ],
                                 ),
@@ -557,8 +578,6 @@ app.layout = html.Div(
                                     switch=True,
                                     className="timer-checklist",
                                 ),
-                                html.Div(id="timer-readout", className="timer-readout", children="00:00:00"),
-                                html.Div(id="timer-subtext", className="timer-subtext", children="Elapsed: 00:00:00"),
                             ],
                         ),
                     ],
@@ -1017,7 +1036,7 @@ def update_temps(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, sto
     alert_options = alert_options or []
 
     timer_readout = "00:00:00"
-    timer_subtext = "Elapsed: 00:00:00"
+    timer_subtext = "00:00:00"
     alert_text = "System status messages will appear here."
     alert_class = "alert-strip alert-info"
     app_class = "app-shell"
@@ -1032,7 +1051,7 @@ def update_temps(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, sto
         e_h = elapsed // 3600
         e_m = (elapsed % 3600) // 60
         e_s = elapsed % 60
-        timer_subtext = f"Elapsed: {e_h:02d}:{e_m:02d}:{e_s:02d}"
+        timer_subtext = f"{e_h:02d}:{e_m:02d}:{e_s:02d}"
 
     if timer_data.get("active") and timer_data.get("target_ts"):
         remaining = max(0, float(timer_data["target_ts"]) - now_dt.timestamp())

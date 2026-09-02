@@ -77,13 +77,51 @@ input:focus{
   flex:0 0 auto;
 }
 
-.brand{display:flex;align-items:center;gap:10px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
 .brand-logo{width:70px;height:34px;display:block;object-fit:contain;background:#fff;border:1px solid var(--border);border-radius:6px;padding:2px}
-.brand-copy{display:flex;flex-direction:column}
+.brand-copy{display:flex;flex-direction:column;min-width:0}
 
 .brand-title{font-size:16px;font-weight:700;line-height:1.1}
 .brand-subtitle{font-size:11px;color:var(--muted);margin-top:1px}
-.topbar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.topbar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-left:auto}
+
+.topbar-time{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:nowrap;
+}
+
+.time-chip{
+  min-width:72px;
+  padding:4px 8px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--surface-2);
+}
+
+.time-chip-primary{
+  min-width:96px;
+}
+
+.time-label{
+  font-size:9px;
+  line-height:1;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  margin-bottom:2px;
+}
+
+.time-value{
+  color:var(--text);
+  font-size:14px;
+  line-height:1;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+  text-align:left;
+  white-space:nowrap;
+}
 
 .status-pill{
   padding:6px 10px;border-radius:999px;font-size:12px;font-weight:600;
@@ -92,7 +130,7 @@ input:focus{
 .status-ok{background:#ecfdf5;color:#047857;border-color:#bbf7d0}
 .status-warn{background:#fff7ed;color:#b45309;border-color:#fed7aa}
 .status-pulse{animation:statusPulse .65s steps(2,end) infinite}
-.clock{font-size:12px;color:var(--muted);min-width:72px;text-align:right;font-variant-numeric:tabular-nums}
+.clock{min-width:0}
 
 .ccam-hero{
   position:relative;
@@ -245,18 +283,18 @@ input:focus{
 }
 
 .timer-readout{
-  font-size:28px;
+  font-size:14px;
   line-height:1;
-  font-weight:800;
+  font-weight:700;
   color:var(--text);
   font-variant-numeric:tabular-nums;
-  letter-spacing:.03em;
+  letter-spacing:0;
 }
 
 .timer-subtext{
-  margin-top:4px;
-  font-size:11px;
-  color:var(--muted);
+  margin-top:0;
+  font-size:14px;
+  color:var(--text);
 }
 
 .timer-controls-inline{
@@ -460,13 +498,15 @@ input:focus{
   .ccam-hero-title{font-size:22px}
   .ccam-hero-subtitle{font-size:13px}
   .timer-toolbar{grid-template-columns:1fr}
-  .timer-readout{font-size:26px}
+  .topbar-time{flex-wrap:wrap}
 }
 
 @media (max-width: 720px){
   .app-shell{padding:12px}
   .topbar{flex-direction:column;align-items:flex-start}
-  .topbar-actions{justify-content:flex-start}
+  .topbar-actions{justify-content:flex-start;margin-left:0}
+  .topbar-time{width:100%}
+  .time-chip{flex:1 1 90px}
   .bounds-row{grid-template-columns:1fr}
   .temperature-cards{grid-template-columns:1fr}
   .footer{flex-direction:column}
