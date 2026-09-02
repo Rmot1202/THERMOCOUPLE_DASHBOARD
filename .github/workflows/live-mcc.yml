@@ -23,9 +23,6 @@ jobs:
     runs-on: [self-hosted, linux, ARM64, live-mcc]
     timeout-minutes: 20
 
-    env:
-      VENV: ${{ runner.temp }}/thermocouple-dashboard-ci-${{ github.run_id }}
-
     steps:
       - name: Check out source
         uses: actions/checkout@v6
@@ -35,6 +32,7 @@ jobs:
       - name: Install test dependencies
         run: |
           set -euo pipefail
+          VENV="$RUNNER_TEMP/thermocouple-dashboard-ci-$GITHUB_RUN_ID"
           python3 -m venv "$VENV"
           . "$VENV/bin/activate"
           python -m pip install --disable-pip-version-check --upgrade pip
@@ -43,6 +41,7 @@ jobs:
       - name: Run dashboard tests
         run: |
           set -euo pipefail
+          VENV="$RUNNER_TEMP/thermocouple-dashboard-ci-$GITHUB_RUN_ID"
           . "$VENV/bin/activate"
           python -m pytest -q tests
 
@@ -50,6 +49,7 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
+          VENV="$RUNNER_TEMP/thermocouple-dashboard-ci-$GITHUB_RUN_ID"
           case "$VENV" in
             "$RUNNER_TEMP"/*) rm -rf "$VENV" ;;
             *) echo "Refusing to remove unexpected path: $VENV" >&2; exit 1 ;;
