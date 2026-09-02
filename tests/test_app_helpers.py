@@ -79,6 +79,14 @@ def test_make_figure_uses_store_data_and_y_axis_range():
     assert list(fig.layout.yaxis.range) == [cfg["y_min"], cfg["y_max"]]
 
 
+def test_display_channel_labels_use_sensor_names():
+    """Dashboard labels should use furnace position names, not raw channel numbers."""
+
+    assert dash_app.display_channel_label(0) == "Inlet"
+    assert dash_app.display_channel_label(1) == "Center"
+    assert dash_app.display_channel_label(2) == "Outlet"
+
+
 def test_toggle_save_modal_respects_trigger(monkeypatch):
     """The save modal should respond to Dash's triggering control."""
 
