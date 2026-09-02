@@ -170,7 +170,7 @@ The application creates an `MCCThermocouple` interface using the configured devi
 
 ### Channel Mapping in the UI
 
-- Channel 7 is displayed in the first live temperature card.
+- Channels 0, 1, and 2 are displayed in the live temperature cards.
 
 ## Recording Format
 

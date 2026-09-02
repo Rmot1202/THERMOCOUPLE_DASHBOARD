@@ -33,7 +33,7 @@ RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
 PROFILES_DIR.mkdir(parents=True, exist_ok=True)
 
 DEVICE_IP = config.DEVICE_IP
-DISPLAY_CHANNELS = getattr(config, "DISPLAY_CHANNELS", [7])
+DISPLAY_CHANNELS = getattr(config, "DISPLAY_CHANNELS", [0, 1, 2])
 GRAPH_WINDOW_SECONDS = getattr(config, "GRAPH_WINDOW_SECONDS", 300)
 GRAPH_HEIGHT = getattr(config, "GRAPH_HEIGHT", 400)
 BASE_PATH = os.getenv("DASH_BASE_PATHNAME", "/")
