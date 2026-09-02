@@ -9,34 +9,55 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: live-mcc-dashboard
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
 jobs:
   test:
     name: Test dashboard
     runs-on: [self-hosted, linux, ARM64, live-mcc]
+    timeout-minutes: 20
+
+    env:
+      VENV: ${{ runner.temp }}/thermocouple-dashboard-ci-${{ github.run_id }}
 
     steps:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Create test environment
+      - name: Install test dependencies
         run: |
           set -euo pipefail
-          python3 -m venv .ci-venv
-          . .ci-venv/bin/activate
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
-          python -m pip install pytest
+          python3 -m venv "$VENV"
+          . "$VENV/bin/activate"
+          python -m pip install --disable-pip-version-check --upgrade pip
+          python -m pip install --disable-pip-version-check -r requirements.txt pytest
 
       - name: Run dashboard tests
         run: |
           set -euo pipefail
-          . .ci-venv/bin/activate
-          python -m pytest -q
+          . "$VENV/bin/activate"
+          python -m pytest -q tests
+
+      - name: Clean test environment
+        if: always()
+        run: |
+          set -euo pipefail
+          case "$VENV" in
+            "$RUNNER_TEMP"/*) rm -rf "$VENV" ;;
+            *) echo "Refusing to remove unexpected path: $VENV" >&2; exit 1 ;;
+          esac
 
   deploy:
     name: Deploy to Camp-U24-Pi5
     needs: test
     runs-on: [self-hosted, linux, ARM64, live-mcc]
+    timeout-minutes: 10
     environment:
       name: live-mcc
       url: https://10.0.20.21/
@@ -49,3 +70,15 @@ jobs:
         run: |
           set -euo pipefail
           sudo /usr/local/sbin/deploy-thermocouple-dashboard "$GITHUB_WORKSPACE"
+
+      - name: Smoke test dashboard
+        run: |
+          set -euo pipefail
+          for attempt in {1..12}; do
+            if curl --fail --insecure --silent --show-error --max-time 10 https://10.0.20.21/ >/dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Dashboard did not respond after deployment" >&2
+          exit 1
