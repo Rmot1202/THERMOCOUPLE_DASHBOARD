@@ -25,17 +25,17 @@ This project includes focused automated tests for the parts that can break witho
 
 ### `tests/test_hardware_wrapper.py`
 - Tests the `MCCThermocouple` wrapper logic using mocked `mcculw`.
-- Simulates missing MCC library behavior and fallback to simulation mode.
+- Tests missing MCC library behavior without generating fake readings.
 - Ensures connect succeeds when the fake library is available.
 - Validates channel reads return mocked hardware values, including negative temperatures.
-- Validates read failures fall back to simulated data without crashing.
-- Validates `disconnect()` switches the wrapper into simulation mode cleanly.
+- Validates read failures return blank values without crashing.
+- Validates `disconnect()` clears the wrapper connection cleanly.
 
 ### `tests/test_dash_callbacks.py`
 - Tests button recording logic for start/stop flows.
 - Verifies recording state updates, returned button states, and file naming.
 - Verifies `update_temps()` writes recording data when recording is active.
-- Verifies the simulation banner text and class appear when the hardware wrapper is in simulation mode.
+- Verifies the receiving status appears when live readings are available.
 
 ## How to run tests
 

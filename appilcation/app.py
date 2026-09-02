@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 import dash
-from dash import dcc, html, Input, Output, State, clientside_callback, ctx
+from dash import dcc, html, Input, Output, State, ctx
 import dash_bootstrap_components as dbc
 from dash.exceptions import PreventUpdate
 import plotly.graph_objects as go
@@ -33,6 +33,7 @@ RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
 PROFILES_DIR.mkdir(parents=True, exist_ok=True)
 
 DEVICE_IP = config.DEVICE_IP
+DISPLAY_CHANNELS = getattr(config, "DISPLAY_CHANNELS", [7])
 GRAPH_WINDOW_SECONDS = getattr(config, "GRAPH_WINDOW_SECONDS", 300)
 GRAPH_HEIGHT = getattr(config, "GRAPH_HEIGHT", 400)
 BASE_PATH = os.getenv("DASH_BASE_PATHNAME", "/")
@@ -99,8 +100,31 @@ def save_recording_to_directory(filename, content, output_dir=None):
     return destination
 
 
+def recording_payload(filename=None):
+    if filename:
+        path = RECORDINGS_DIR / Path(filename).name
+        files = [path] if path.exists() else []
+    else:
+        files = sorted(RECORDINGS_DIR.glob("TUS_*.txt"), key=lambda x: x.stat().st_mtime, reverse=True)
+
+    if not files:
+        return {"filename": None, "content": ""}
+
+    latest = files[0]
+    with open(latest, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    return {"filename": latest.name, "content": content}
+
+
 def fmt_temp(value):
     return f"{value:.3f}" if isinstance(value, (int, float)) else "--"
+
+
+def display_channel_label(index):
+    if index < len(DISPLAY_CHANNELS):
+        return f"Channel {DISPLAY_CHANNELS[index]}"
+    return "Unused"
 
 
 def unique_fractional_second(now_dt, last_ts):
@@ -110,36 +134,10 @@ def unique_fractional_second(now_dt, last_ts):
     return ts
 
 
-def simulate_values(count=3):
-    try:
-        return hardware._simulate(count)
-    except Exception:
-        import random
-        return [72.0 + random.uniform(-1.0, 1.0) + i * 2 for i in range(count)]
-
 def read_live_temps():
-    if not hardware.connected:
-        try:
-            hardware.connect()
-        except Exception:
-            pass
-
-    if hardware.connected:
-        all_temps = hardware.read_all_channels()
-    else:
-        all_temps = simulate_values(8)
-
-    if all_temps is None:
-        all_temps = simulate_values(8)
-
-    if any(v is not None for v in all_temps):
-        return [
-            all_temps[0] if len(all_temps) > 0 else None,
-            all_temps[1] if len(all_temps) > 1 else None,
-            all_temps[2] if len(all_temps) > 2 else None,
-        ]
-
-    return simulate_values(3)
+    channels = list(DISPLAY_CHANNELS[:3])
+    temps = hardware.read_channels(channels)
+    return (temps + [None, None, None])[:3]
     
 
 
@@ -190,9 +188,9 @@ def make_figure(store, cfg):
     ch2 = store.get("ch2", [])
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=times, y=ch0, mode="lines", name="Channel 0", line=dict(color="#3b82f6", width=2)))
-    fig.add_trace(go.Scatter(x=times, y=ch1, mode="lines", name="Channel 1", line=dict(color="#ef4444", width=2)))
-    fig.add_trace(go.Scatter(x=times, y=ch2, mode="lines", name="Channel 2", line=dict(color="#a855f7", width=2)))
+    fig.add_trace(go.Scatter(x=times, y=ch0, mode="lines", name=display_channel_label(0), line=dict(color="#3b82f6", width=2)))
+    fig.add_trace(go.Scatter(x=times, y=ch1, mode="lines", name=display_channel_label(1), line=dict(color="#ef4444", width=2)))
+    fig.add_trace(go.Scatter(x=times, y=ch2, mode="lines", name=display_channel_label(2), line=dict(color="#a855f7", width=2)))
     fig.add_hline(y=cfg["setpoint"], line_dash="dot", line_color="#ef4444", line_width=1)
     fig.add_hline(y=cfg["lower_bound"], line_dash="dot", line_color="#f59e0b", line_width=1)
     fig.add_hline(y=cfg["upper_bound"], line_dash="dot", line_color="#8b5cf6", line_width=1)
@@ -224,7 +222,7 @@ app.layout = html.Div(
     children=[
         dcc.Store(id="data-store", data={"times": [], "ch0": [], "ch1": [], "ch2": []}),
         dcc.Store(id="recording-store", data={"active": False, "filename": None}),
-        dcc.Store(id="save-file-store", data={"filename": None, "content": ""}),
+        dcc.Download(id="download-recording"),
         dcc.Store(
             id="timer-store",
             data={
@@ -283,7 +281,7 @@ app.layout = html.Div(
                 html.Div(
                     className="topbar-actions",
                     children=[
-                        html.Div(id="status-indicator", className="status-pill status-ok", children="Connected"),
+                        html.Div(id="status-indicator", className="status-pill status-warn", children="Idle"),
                         html.Div(id="clock", className="clock"),
                     ],
                 ),
@@ -408,21 +406,21 @@ app.layout = html.Div(
                                         html.Div(
                                             className="temp-card",
                                             children=[
-                                                html.Div("Outlet", className="temp-label"),
+                                                html.Div(display_channel_label(0), className="temp-label"),
                                                 html.Div(id="temp-0", className="temp-value temp-blue", children="--"),
                                             ],
                                         ),
                                         html.Div(
                                             className="temp-card",
                                             children=[
-                                                html.Div("Center", className="temp-label"),
+                                                html.Div(display_channel_label(1), className="temp-label"),
                                                 html.Div(id="temp-1", className="temp-value temp-red", children="--"),
                                             ],
                                         ),
                                         html.Div(
                                             className="temp-card",
                                             children=[
-                                                html.Div("Inlet", className="temp-label"),
+                                                html.Div(display_channel_label(2), className="temp-label"),
                                                 html.Div(id="temp-2", className="temp-value temp-purple", children="--"),
                                             ],
                                         ),
@@ -719,9 +717,8 @@ def toggle_save_modal(btn_save, btn_cancel, btn_confirm, is_open):
 
 
 @app.callback(
-    [
-        Output("save-file-store", "data"),
-    ],
+    Output("download-recording", "data"),
+    Output("save-status", "children"),
     Input("save-modal-confirm", "n_clicks"),
     State("cfg-furnace", "value"),
     State("cfg-setpoint", "value"),
@@ -734,18 +731,15 @@ def toggle_save_modal(btn_save, btn_cancel, btn_confirm, is_open):
     prevent_initial_call=True,
 )
 def prepare_save_as_with_config(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, thermocouple_type):
-    files = sorted(RECORDINGS_DIR.glob("TUS_*.txt"), key=lambda x: x.stat().st_mtime, reverse=True)
-    if not files:
-        return {"filename": None, "content": ""}
-
     cfg = build_live_cfg(furnace, setpoint, lower, upper, y_min, y_max, sampling, thermocouple_type)
     save_config(cfg)
 
-    latest = files[0]
-    with open(latest, "r", encoding="utf-8") as f:
-        content = f.read()
+    payload = recording_payload()
+    if not payload["filename"] or not payload["content"]:
+        return dash.no_update, "No recording file available."
 
-    return {"filename": latest.name, "content": content}
+    filename = Path(payload["filename"]).name
+    return dcc.send_string(payload["content"], filename), f"Downloaded {filename}"
 
 
 @app.callback(
@@ -825,16 +819,21 @@ def update_temps(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, sto
     new_store = {"times": times, "ch0": ch0, "ch1": ch1, "ch2": ch2}
     fig = make_figure(new_store, live_cfg)
 
-    if getattr(hardware, "simulation_mode", False):
-        status_text = "Simulation"
-        status_class = "status-pill status-warn"
-    else:
+    has_live_data = any(v is not None for v in safe_temps)
+
+    if hardware.connected and has_live_data:
+        status_text = "Receiving"
+        status_class = "status-pill status-ok status-pulse"
+    elif hardware.connected:
         status_text = "Connected"
         status_class = "status-pill status-ok"
+    else:
+        status_text = "Disconnected"
+        status_class = "status-pill status-warn"
 
     footer_info = (
         f"Board {hardware.board_num} • IP {hardware.device_ip or 'local'}"
-        f" • {'Simulation' if getattr(hardware, 'simulation_mode', False) else 'Live'}"
+        f" • {status_text}"
     )
 
     if (
@@ -913,11 +912,11 @@ def update_temps(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, sto
 
     reached_channels = []
     if ch0_hit:
-        reached_channels.append("Channel 0")
+        reached_channels.append(display_channel_label(0))
     if ch1_hit:
-        reached_channels.append("Channel 1")
+        reached_channels.append(display_channel_label(1))
     if ch2_hit:
-        reached_channels.append("Channel 2")
+        reached_channels.append(display_channel_label(2))
 
     if timer_data.get("done"):
         alert_text = "Timer reached. Review next step or start a new timer."
@@ -967,75 +966,10 @@ def update_temps(n, furnace, setpoint, lower, upper, y_min, y_max, sampling, sto
     return result[:13] if legacy_call else result
 
 
-clientside_callback(
-    """
-    async function(fileData) {
-        if (!fileData || !fileData.content) {
-            return "No recording file available.";
-        }
-
-        const content = fileData.content || "";
-        const filename = (fileData.filename || "thermocouple_recording.txt").replace(/[\\/:*?\"<>|]/g, "_");
-
-        try {
-            if (window.showDirectoryPicker) {
-                const directoryHandle = await window.showDirectoryPicker({ mode: "readwrite" });
-                const fileHandle = await directoryHandle.getFileHandle(filename, { create: true });
-                const writable = await fileHandle.createWritable();
-                await writable.write(content);
-                await writable.close();
-                return `Saved to ${filename} in the selected folder.`;
-            }
-
-            if (window.showSaveFilePicker) {
-                const handle = await window.showSaveFilePicker({
-                    suggestedName: filename,
-                    types: [
-                        {
-                            description: "Text files",
-                            accept: { "text/plain": [".txt"] }
-                        }
-                    ]
-                });
-
-                const writable = await handle.createWritable();
-                await writable.write(content);
-                await writable.close();
-                return "Recording and furnace configuration saved successfully.";
-            }
-        } catch (err) {
-            if (err && err.name === "AbortError") {
-                return "Save cancelled.";
-            }
-        }
-
-        const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-
-        return "Directory selection was unavailable, so the file was downloaded instead.";
-    }
-    """,
-    Output("save-status", "children"),
-    Input("save-file-store", "data"),
-    prevent_initial_call=True,
-)
-
-
-
-
 # layouts, callbacks, etc.
 
 if __name__ == "__main__":
     if not hardware.connected:
         hardware.connect()
-        if not hardware.connected:
-            print("Warning: Could not connect to hardware. Using simulated data.")
     print("Starting Thermocouple Dashboard at http://0.0.0.0:8050/")
     app.run(debug=False, use_reloader=False, host="0.0.0.0", port=8050)

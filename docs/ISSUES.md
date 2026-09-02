@@ -2,7 +2,7 @@
 
 ## 1. MCC board had to be connected before launching the app
 
-A major issue was that the application did not reliably recover if the MCC E-TC board was not already connected before startup. In practice, the user needed to have the board connected before running the application, otherwise the dashboard would fall back to simulation or fail to detect the device.
+A major issue was that the application did not reliably recover if the MCC E-TC board was not already connected before startup. In practice, the user needed to have the board connected before running the application, otherwise the dashboard would fail to detect the device.
 
 ### Impact
 This made the startup process less flexible because live hardware access depended on the device being available at launch time. If the board was not already present, the app could not reliably switch back to hardware mode later.
@@ -27,13 +27,13 @@ This prevented the app from reliably controlling where the downloaded recording 
 ### Why it happened
 Browser-based downloads are generally controlled by the browser, not by the server app. In Dash, download location is typically determined by browser settings such as “ask where to save each file” or the user’s default downloads folder.
 
-## 4. Hardware detection and simulation fallback
+## 4. Hardware detection and fake-data fallback
 
-The MCC device detection issue also created confusion between real readings and simulation mode. The board detection error showed up as `Specified Network board not detected`, which meant the app could not confirm the Ethernet board was available.
+The MCC device detection issue also created confusion between real readings and fake fallback values. The board detection error showed up as `Specified Network board not detected`, which meant the app could not confirm the Ethernet board was available.
 
 ### Impact
-When the hardware was not detected, the app used simulated data instead of live channel values. That helped keep the dashboard running, but it also made it harder to tell whether the real board was actually connected.
+When the hardware was not detected, the app used to generate fake data instead of live channel values. That has been removed so a real DAQ failure shows up as blank readings.
 
 ## 6. Overall lesson
 
-The biggest lesson was that hardware-backed dashboards need clear boundaries between live device mode, simulation mode, and browser-controlled features like downloading and preference storage. The MCC board needed to be available at startup, preferences needed explicit persistence, and file save behavior depended on the browser environment rather than the local app logic.
+The biggest lesson was that hardware-backed dashboards need clear boundaries between live device mode, no-data states, and browser-controlled features like downloading and preference storage. The MCC board needed to be available at startup, preferences needed explicit persistence, and file save behavior depended on the browser environment rather than the local app logic.

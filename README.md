@@ -9,7 +9,7 @@ A Python Dash web application for monitoring an MCC thermocouple device, visuali
 - Recording controls for starting and stopping TUS-style temperature logs. [file:480]
 - Save/export workflow for recording files and furnace configuration. [file:480]
 - Persistent JSON-based profile and configuration storage. [file:480]
-- Simulation fallback when MCC hardware is unavailable. [file:480]
+- Clear disconnected/no-data state when MCC hardware is unavailable.
 
 ## Project Structure
 
@@ -166,17 +166,11 @@ The dashboard provides:
 
 ## Hardware Behavior
 
-The application creates an `MCCThermocouple` interface using the configured device IP, then reads live temperatures from the MCC hardware layer. [file:480] If the hardware is unavailable or not connected, the app can fall back to simulated values so the dashboard remains usable. [file:480]
+The application creates an `MCCThermocouple` interface using the configured device IP, then reads live temperatures from the MCC hardware layer. If the hardware is unavailable or not connected, the dashboard leaves readings blank and shows a disconnected/no-data state.
 
 ### Channel Mapping in the UI
 
-- Channel 0 → Outlet [file:480]
-- Channel 1 → Center [file:480]
-- Channel 2 → Inlet [file:480]
-
-### Simulation Mode
-
-If no live hardware connection is available, the dashboard can display simulated readings and show a simulation status/banner in the UI. [file:480]
+- Channel 7 is displayed in the first live temperature card.
 
 ## Recording Format
 
@@ -236,8 +230,8 @@ Manual or hardware-focused tests can be run from the `tests/` directory dependin
 
 | Issue | Likely Cause | Action |
 |---|---|---|
-| Dashboard shows simulation mode | MCC device not connected or app did not connect successfully | Verify device connectivity, IP, thermocouple type, and service startup logs. [file:480] |
-| Direct Python run works but Gunicorn shows simulated data | Hardware connection code only runs in `__main__` or Gunicorn workers are not connecting correctly | Move/connect hardware during app import or retry in the read path; test with one worker. [file:480] |
+| Dashboard shows no temperature values | MCC device not connected or app did not connect successfully | Verify device connectivity, IP, thermocouple type, and service startup logs. |
+| Direct Python run works but Gunicorn shows no values | Gunicorn is not reaching or owning the DAQ connection correctly | Test with one worker and check `journalctl -u thermocouple-dashboard`. |
 | No recordings saved | Recording not started or storage path unavailable | Check `storage/recordings/` and verify write permissions. [file:480] |
 | Service starts but browser is unreachable | Gunicorn bound to localhost only, or reverse proxy not configured | Check service status, local curl response, and proxy settings. |
 | Wrong temperature values | Thermocouple type mismatch | Set the MCC thermocouple type in `hardware.py` to match the installed probe type. |

@@ -9,7 +9,7 @@ Quick installation and configuration guide for the Thermocouple Dashboard.
 - Python 3.8+ or newer
 - Git
 - Linux or Windows development environment
-- MCC thermocouple device optional; simulator mode is available when hardware is not connected
+- MCC thermocouple device for live readings
 - Docker and Docker Compose optional for containerized deployment
 - On Linux, MCC support uses `uldaq` / `libuldaq` when working with supported MCC hardware
 
@@ -449,11 +449,12 @@ Example JSON:
 ./venv/bin/python tests/test_hardware.py
 ```
 
-If the MCC hardware and library are available, the test should report live readings. If the device is offline or the Linux library is unavailable, the app may fall back to simulation mode.
+If the MCC hardware and library are available, the test should report live readings. If the device is offline or the Linux library is unavailable, the app leaves readings blank and logs the connection/read error.
 
-### Simulator Mode
+### No Hardware Fallback
 
-If the MCC device is unavailable, the app can use simulated data so the dashboard and recording workflow remain testable. [file:480]
+The app does not generate fake temperatures. Missing hardware or failed
+reads show as blank dashboard values.
 
 ---
 
@@ -489,7 +490,7 @@ curl http://127.0.0.1:8050
 | Problem | Solution |
 |---------|----------|
 | Port 8050 already in use | Stop the conflicting process or change the bind port |
-| Gunicorn starts but dashboard shows simulated data | Ensure hardware connection happens outside `__main__`, and test with `--workers 1` |
+| Gunicorn starts but dashboard shows no values | Ensure the service can reach the DAQ, and test with `--workers 1` |
 | Device not found | Verify IP address in `config.py`, network connectivity, and MCC Linux runtime setup |
 | Wrong readings | Verify thermocouple type, wiring, and channel assignment |
 | systemd fails with USER or GROUP errors | Correct `User=` and remove or fix `Group=` in the unit file |
@@ -502,7 +503,7 @@ curl http://127.0.0.1:8050
 ## Next Steps
 
 1. Verify MCC hardware connectivity with the hardware test script.
-2. Run the app locally and confirm live or simulated data appears.
+2. Run the app locally and confirm live data appears.
 3. Validate Gunicorn manually.
 4. Configure systemd startup.
 5. Add NGINX as a reverse proxy.

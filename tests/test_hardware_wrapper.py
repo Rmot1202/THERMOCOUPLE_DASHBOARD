@@ -1,4 +1,4 @@
-"""Regression tests for the MCC hardware wrapper and simulation fallback."""
+"""Regression tests for the MCC hardware wrapper."""
 
 import builtins
 import importlib
@@ -58,8 +58,8 @@ def _reload_hardware_with_fake_mcculw(monkeypatch, include_ul=True, t_in_impl=No
     return importlib.reload(hardware)
 
 
-def test_connect_falls_back_to_simulation_when_library_missing(monkeypatch):
-    """A missing MCC library should put the device in simulation mode."""
+def test_connect_reports_failure_when_library_missing(monkeypatch):
+    """A missing MCC library should report that hardware is unavailable."""
 
     hardware = _reload_hardware_with_fake_mcculw(monkeypatch, include_ul=False)
 
@@ -67,8 +67,8 @@ def test_connect_falls_back_to_simulation_when_library_missing(monkeypatch):
 
     assert device.ul is None
     assert device.connect() is False
-    assert device.simulation_mode is True
-    assert "simulation" in device.last_error.lower()
+    assert device.connected is False
+    assert "not available" in device.last_error.lower()
 
 
 def test_connect_succeeds_with_fake_mcculw(monkeypatch):
@@ -79,7 +79,6 @@ def test_connect_succeeds_with_fake_mcculw(monkeypatch):
     device = hardware.MCCThermocouple(device_ip="192.168.1.101")
     assert device.connect() is True
     assert device.connected is True
-    assert device.simulation_mode is False
     assert device.last_error is None
 
 
@@ -98,12 +97,11 @@ def test_read_channels_returns_real_values_and_accepts_negative(monkeypatch):
     temperatures = device.read_channels([0, 1, 2])
 
     assert temperatures == [-10.5, 2.0, 4.0]
-    assert device.simulation_mode is False
     assert device.last_error is None
 
 
-def test_read_channels_falls_back_to_simulation_on_all_errors(monkeypatch):
-    """All channel read failures should switch to simulated data."""
+def test_read_channels_returns_none_on_all_errors(monkeypatch):
+    """All channel read failures should return blanks instead of fake data."""
 
     def failing_t_in(board, channel, scale):
         """Raise a hardware-like error for every channel read."""
@@ -116,14 +114,12 @@ def test_read_channels_falls_back_to_simulation_on_all_errors(monkeypatch):
 
     temps = device.read_channels([0, 1, 2])
 
-    assert len(temps) == 3
-    assert all(isinstance(value, float) for value in temps)
-    assert device.simulation_mode is True
+    assert temps == [None, None, None]
     assert "all hardware channel reads failed" in device.last_error.lower()
 
 
-def test_disconnect_sets_simulation_mode(monkeypatch):
-    """Disconnecting should clear the connection and enable simulation."""
+def test_disconnect_clears_connection(monkeypatch):
+    """Disconnecting should clear the connection."""
 
     hardware = _reload_hardware_with_fake_mcculw(monkeypatch, include_ul=True, t_in_impl=20.0)
     device = hardware.MCCThermocouple()
@@ -131,4 +127,3 @@ def test_disconnect_sets_simulation_mode(monkeypatch):
 
     assert device.disconnect() is True
     assert device.connected is False
-    assert device.simulation_mode is True

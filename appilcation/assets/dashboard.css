@@ -85,6 +85,7 @@ input:focus{
 }
 .status-ok{background:#ecfdf5;color:#047857;border-color:#bbf7d0}
 .status-warn{background:#fff7ed;color:#b45309;border-color:#fed7aa}
+.status-pulse{animation:statusPulse .65s steps(2,end) infinite}
 .clock{font-size:12px;color:var(--muted);min-width:72px;text-align:right;font-variant-numeric:tabular-nums}
 
 .ccam-hero{
@@ -385,6 +386,11 @@ input:focus{
   50%{opacity:.2;transform:scale(1.05);color:#b91c1c}
 }
 
+@keyframes statusPulse{
+  0%,100%{background:#ecfdf5;color:#047857;border-color:#bbf7d0;box-shadow:0 0 0 0 rgba(16,185,129,0)}
+  50%{background:#10b981;color:#ffffff;border-color:#059669;box-shadow:0 0 0 5px rgba(16,185,129,.28)}
+}
+
 .mt-3{margin-top:1rem}
 .me-2{margin-right:.5rem}
 
@@ -424,5 +430,6 @@ input:focus{
 
 @media (prefers-reduced-motion: reduce){
   .flash-screen,
-  .flash-temp{animation:none !important}
+  .flash-temp,
+  .status-pulse{animation:none !important}
 }

@@ -18,7 +18,7 @@ The application source lives under `appilcation/`. The project root intentionall
 
 - `appilcation/app.py`: Dash layout, callbacks, config load/save, TUS filename and row formatting
 - `appilcation/config.py`: defaults, channel count, colors, polling interval, output directory
-- `appilcation/hardware.py`: MCC E-TC connection and simulated-data fallback
+- `appilcation/hardware.py`: MCC E-TC connection and channel read handling
 - `appilcation/profiles.py`: profile JSON save/load/list/delete helpers
 - `tests/test_hardware.py`: command-line hardware test
 

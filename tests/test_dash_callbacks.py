@@ -43,13 +43,13 @@ def test_handle_recording_start_and_stop(monkeypatch, tmp_path):
     assert stopped_rec_data["filename"] == updated_rec_data["filename"]
 
 
-def test_update_temps_writes_recording_and_simulation_status(monkeypatch, tmp_path):
-    """Temperature updates should record rows and show simulation state."""
+def test_update_temps_writes_recording_and_marks_receiving(monkeypatch, tmp_path):
+    """Temperature updates should record rows and show live receiving state."""
 
     temp_data = [12.3, 13.4, 14.5]
     monkeypatch.setattr(dash_app, "read_live_temps", lambda: temp_data)
     monkeypatch.setattr(dash_app, "RECORDINGS_DIR", tmp_path)
-    dash_app.hardware.simulation_mode = True
+    dash_app.hardware.connected = True
 
     existing_store = {"times": [], "ch0": [], "ch1": [], "ch2": []}
     record_state = {"active": True, "filename": "live_test.txt"}
@@ -74,10 +74,38 @@ def test_update_temps_writes_recording_and_simulation_status(monkeypatch, tmp_pa
     assert temp2 != "--"
     assert rec_status == "Status: Recording"
     assert rec_file == "File: live_test.txt"
-    assert status_text == "Simulation"
+    assert status_text == "Receiving"
+    assert status_class == "status-pill status-ok status-pulse"
     assert updated_rec_data["active"] is True
     assert updated_rec_data["filename"] == "live_test.txt"
     assert (tmp_path / "live_test.txt").exists()
 
     recorded_text = (tmp_path / "live_test.txt").read_text(encoding="utf-8")
     assert "# TUS Recording" in recorded_text or "12.300" in recorded_text
+
+
+def test_prepare_save_as_downloads_latest_recording(monkeypatch, tmp_path):
+    """Save As should return a Dash download payload for the latest recording."""
+
+    monkeypatch.setattr(dash_app, "RECORDINGS_DIR", tmp_path)
+    monkeypatch.setattr(dash_app, "PROFILES_DIR", tmp_path)
+    monkeypatch.setattr(dash_app, "CONFIG_FILE", tmp_path / "current_config.json")
+
+    latest = tmp_path / "TUS_F2_latest.txt"
+    latest.write_text("sample-data", encoding="utf-8")
+
+    download_data, status = dash_app.prepare_save_as_with_config(
+        n=1,
+        furnace=2,
+        setpoint=80,
+        lower=75,
+        upper=85,
+        y_min=50,
+        y_max=100,
+        sampling=1.0,
+        thermocouple_type="R",
+    )
+
+    assert download_data["filename"] == "TUS_F2_latest.txt"
+    assert download_data["content"] == "sample-data"
+    assert status == "Downloaded TUS_F2_latest.txt"

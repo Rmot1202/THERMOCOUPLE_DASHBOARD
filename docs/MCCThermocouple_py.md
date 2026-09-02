@@ -1,6 +1,6 @@
 # MCCThermocouple
 
-`MCCThermocouple` is a Python wrapper for an MCC E-TC Ethernet thermocouple device. It uses MCC's Universal Library through the `mcculw` Python package to read thermocouple temperatures in Celsius, while providing a simulation fallback when the hardware or library is unavailable.[1][2]
+`MCCThermocouple` is a Python wrapper for an MCC E-TC Ethernet thermocouple device. It uses MCC's Python libraries to read thermocouple temperatures in Celsius and returns blank values when the hardware or library is unavailable.
 
 ## Overview
 
@@ -11,15 +11,13 @@ The MCC E-TC is an Ethernet-based, 8-channel thermocouple measurement device des
 - Connect to an MCC E-TC device through the MCC Universal Library.[1][2]
 - Read one or more thermocouple channels in Celsius using `TempScale.CELSIUS`.[2][5]
 - Read all 8 channels with a helper method.[3][4]
-- Fall back to simulation mode when the MCC library is missing or hardware reads fail.[2]
 - Preserve partial-read behavior by returning `None` for failed channels while keeping successful channel values.[5]
 - Expose device information for dashboards, diagnostics, or test utilities.[1][2]
 
 ## Requirements
 
-- Windows system with MCC software installed, because the Python API is a wrapper over MCC's Universal Library for Windows.[1][2]
-- MCC DAQ software and InstaCal installed and configured before use.[6]
-- Python with the `mcculw` package available.[2][7]
+- Linux with MCC UL for Linux / `uldaq` for the deployed Pi, or Windows with `mcculw` for development.
+- Python with the matching MCC package available.
 - An MCC E-TC or compatible MCC temperature device configured in the MCC software environment.[6][3]
 
 ## Installation
@@ -44,7 +42,7 @@ if device.connect():
     temps = device.read_channels([0, 1, 2])
     print("Temperatures:", temps)
 else:
-    print("Using simulation mode")
+    print("Hardware unavailable")
 ```
 
 ## Class design
@@ -63,13 +61,13 @@ Arguments:
 
 ### Internal state
 
-The class tracks connection state, simulation state, the most recent error, and a cached handle to the imported MCC Universal Library module.[2] It also suppresses repeated duplicate error logs through `_log_once`, which is useful when a dashboard polls the device repeatedly.
+The class tracks connection state, the most recent error, and a cached handle to the imported MCC library module. It also suppresses repeated duplicate error logs through `_log_once`, which is useful when a dashboard polls the device repeatedly.
 
 ## Methods
 
 ### `connect()`
 
-Attempts to initialize device access. If the `mcculw` library is unavailable, the object switches into simulation mode and returns `False`.[2] In the provided implementation, a successful connection assumes the MCC device has already been configured in InstaCal or MCC software rather than performing full device discovery inside the class.[6]
+Attempts to initialize device access. If the MCC library is unavailable or the device cannot be reached, the object returns `False` and records `last_error`.
 
 ### `read_channels(channels=None)`
 
@@ -77,9 +75,9 @@ Reads one or more channels and returns a list of values. Thermocouple readings a
 
 Behavior:
 
-- If hardware is unavailable, returns simulated values.
+- If hardware is unavailable, returns `None` values.
 - If some channel reads fail, returns `None` for those channels and valid floats for the rest.
-- If all channel reads fail, the class switches to simulation mode and returns simulated values.
+- If all channel reads fail, returns `None` values.
 
 ### `read_single_channel(channel=0)`
 
@@ -91,19 +89,15 @@ Returns values for channels `0` through `7`, matching the 8-channel nature of th
 
 ### `disconnect()`
 
-Marks the object as disconnected and enables simulation mode. This is a lightweight state transition in the current implementation rather than a full hardware teardown.
+Marks the object as disconnected and releases any active device handle.
 
 ### `get_device_info()`
 
-Returns a dictionary with device metadata and runtime state, including connection status, simulation status, board number, IP address, and maximum sampling-rate metadata.[3][4]
+Returns a dictionary with device metadata and runtime state, including connection status, board number, IP address, and maximum sampling-rate metadata.[3][4]
 
 ### `test_read()`
 
-Runs a simple console-based connection and read test on channels `0`, `1`, and `2`, then prints either hardware data or a simulation notice.
-
-## Simulation mode
-
-Simulation mode is useful for UI development, testing, and offline debugging. If the MCC library cannot be imported or if all hardware channel reads fail, the class generates synthetic temperatures with small random noise rather than stopping the application.[2] This pattern is especially helpful for dashboards that need to remain usable even when the physical device is temporarily disconnected.
+Runs a simple console-based connection and read test, then prints hardware data or a connection/read error.
 
 ## Use cases
 
@@ -112,8 +106,8 @@ This class is a good fit for:
 - Dash or Flask temperature-monitoring dashboards.
 - Furnace or TUS logging tools.
 - Lab data collection utilities.
-- Development environments without live MCC hardware.
-- Integration layers that need a consistent API for both real and simulated temperature data.
+- Development environments that should fail visibly when live MCC hardware is missing.
+- Integration layers that need a consistent API for real temperature data and blank failed reads.
 
 ## Notes
 

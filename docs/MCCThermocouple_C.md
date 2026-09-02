@@ -4,7 +4,7 @@ This project provides a small C-style wrapper for reading temperatures from an M
 
 ## Overview
 
-The MCC E-TC is an Ethernet-based, 8-channel thermocouple measurement device designed for temperature acquisition [web:887][web:890]. In C, the same design used in the Python version becomes a struct or object-like wrapper that manages connection state, reads channels, handles errors, and optionally falls back to simulated values during development [web:896][web:897].
+The MCC E-TC is an Ethernet-based, 8-channel thermocouple measurement device designed for temperature acquisition [web:887][web:890]. In C, the same design used in the Python version becomes a struct or object-like wrapper that manages connection state, reads channels, and handles errors [web:896][web:897].
 
 ## Features
 
@@ -12,7 +12,6 @@ The MCC E-TC is an Ethernet-based, 8-channel thermocouple measurement device des
 - Read one or more channels in Celsius [web:896][web:897].
 - Read all available channels.
 - Support partial read failures by returning invalid channels as missing values.
-- Switch to simulation mode when hardware or library access fails.
 - Expose basic device information for diagnostics or dashboards.
 
 ## Requirements
@@ -32,7 +31,6 @@ typedef struct {
     int device_id;
     int board_num;
     int connected;
-    int simulation_mode;
     const char* last_error;
 } MCCThermocouple;
 ```
@@ -59,7 +57,6 @@ int main(void) {
     dev.device_id = 0;
     dev.board_num = 0;
     dev.connected = 0;
-    dev.simulation_mode = 0;
     dev.last_error = NULL;
 
     if (mcct_connect(&dev)) {
@@ -74,7 +71,7 @@ int main(void) {
 
         mcct_disconnect(&dev);
     } else {
-        printf("Connection failed, using simulation mode.\n");
+        printf("Connection failed.\n");
     }
 
     return 0;
@@ -84,13 +81,10 @@ int main(void) {
 ## Behavior
 
 ### Connection
-The `connect` function initializes access to the MCC library and device. If the library is missing or the device cannot be reached, the wrapper can switch into simulation mode.
+The `connect` function initializes access to the MCC library and device. If the library is missing or the device cannot be reached, the wrapper reports the failure.
 
 ### Channel reads
 The `read_channels` function retrieves thermocouple values in Celsius. The Universal Library documentation shows that thermocouple input functions can also include error handling for open thermocouples and out-of-range values [web:896].
-
-### Simulation mode
-If hardware access is unavailable, simulated values can be generated so the application continues to run during development.
 
 ## Notes
 

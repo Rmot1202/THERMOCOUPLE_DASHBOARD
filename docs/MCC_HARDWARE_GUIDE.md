@@ -14,7 +14,8 @@ Set the device IP in `appilcation/config.py`:
 DEVICE_IP = "192.168.1.100"
 ```
 
-Leave it as `None` to auto-discover the device, or rely on simulated data when hardware is unavailable.
+Set this to the interface that can reach the DAQ. If hardware is unavailable,
+the dashboard leaves readings blank instead of generating fake values.
 
 ## Test Hardware
 
@@ -47,9 +48,11 @@ Docker:
 docker compose up --build
 ```
 
-## Fallback Behavior
+## Unavailable Hardware
 
-If the MCC library or hardware connection is unavailable, the dashboard logs a warning and uses simulated values. This keeps the UI and recording workflow testable without the physical device.
+If the MCC library or hardware connection is unavailable, the dashboard logs a
+warning and leaves live readings blank. It does not generate fake
+temperatures.
 
 ## Troubleshooting
 
@@ -58,7 +61,7 @@ If the MCC library or hardware connection is unavailable, the dashboard logs a w
 | No MCC devices found | Device power, Ethernet connection, MCC driver install |
 | Wrong readings | Thermocouple wiring and channel assignment |
 | Cannot connect by IP | `DEVICE_IP`, firewall, network route |
-| Docker has simulated data | Container may not have host MCC driver/device access |
+| Docker has no live data | Container may not have host MCC driver/device access |
 
 ## References
 

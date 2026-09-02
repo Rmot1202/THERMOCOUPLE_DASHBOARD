@@ -130,7 +130,7 @@ class MCCThermocouple:
 **Features**:
 - Reads from MCC E-TC device via TCP/IP (192.168.10.101)
 - Returns Celsius values (3 decimal places)
-- Automatic fallback to simulated data
+- Blank readings when DAQ data is unavailable
 - No external API complexity
 
 ### 3. Data Management
@@ -232,7 +232,7 @@ User's computer: ~/Downloads/TUS_F1_260601_1430.txt
 | **Callbacks instead of WebSockets** | Simpler, built-in refresh mechanism, no connection state |
 | **TUS file format** | LabVIEW compatible, meets legacy requirements |
 | **JSON config** | Human-readable, easy version control later |
-| **Simulator fallback** | Graceful degradation when hardware unavailable |
+| **No fake data** | Hardware problems remain visible instead of being masked |
 | **Bootstrap CSS** | Professional look, responsive, minimal custom styling |
 | **Docker + NGINX** | Production-ready HTTPS without code changes |
 

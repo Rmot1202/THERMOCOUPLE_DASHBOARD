@@ -26,7 +26,6 @@ class MCCThermocouple:
         self.device = None
         self.ai_device = None
         self.last_error = None
-        self.simulation_mode = False
         self._last_logged_error = None
         self.ever_had_real_data = False
         self.last_real_data_ts = None
@@ -46,31 +45,19 @@ class MCCThermocouple:
             print(message)
             self._last_logged_error = message
 
-    def _simulate(self, count):
-        try:
-            import numpy as np
-            noise = np.random.normal(0, 0.5, count)
-            return [22.5 + (2.0 * idx) + float(noise[idx]) for idx in range(count)]
-        except Exception:
-            import random
-            return [22.5 + (2.0 * idx) + random.gauss(0, 0.5) for idx in range(count)]
-
     def _mark_real_data(self):
         self.ever_had_real_data = True
         self.last_real_data_ts = time.time()
-        self.simulation_mode = False
 
     def connect(self):
         if ul is None:
             self.connected = False
-            self.simulation_mode = True
-            self.last_error = "uldaq library not available. Using simulation mode."
+            self.last_error = "uldaq library not available."
             self._log_once(self.last_error)
             return False
 
         if _LEGACY_UL:
             self.connected = True
-            self.simulation_mode = False
             self.last_error = None
             return True
 
@@ -102,7 +89,6 @@ class MCCThermocouple:
                     self._log_once(f"Channel {ch} config warning: {e}")
 
             self.connected = True
-            self.simulation_mode = False
             self.last_error = None
             self._last_logged_error = None
             print(f"Connected to device: {desc}")
@@ -112,7 +98,6 @@ class MCCThermocouple:
             self.last_error = f"Could not connect to MCC device: {e}"
             self._log_once(self.last_error)
             self.connected = False
-            self.simulation_mode = True
             self.device = None
             self.ai_device = None
             return False
@@ -129,7 +114,6 @@ class MCCThermocouple:
         self.device = None
         self.ai_device = None
         self.connected = False
-        self.simulation_mode = True
         self._log_once("Disconnected from MCC device")
         return True
 
@@ -174,10 +158,9 @@ class MCCThermocouple:
             self.connect()
 
         if not self.connected or (not _LEGACY_UL and (self.device is None or self.ai_device is None)):
-            self.simulation_mode = True
-            self.last_error = "Hardware/library unavailable; using simulated data."
+            self.last_error = "DAQ is not connected."
             self._log_once(self.last_error)
-            return self._simulate(len(channels))
+            return [None] * len(channels)
 
         try:
             readings = []
@@ -210,18 +193,13 @@ class MCCThermocouple:
                     self.last_error = None
                 return readings
 
-            self.simulation_mode = True
             self.last_error = "All hardware channel reads failed."
             self._log_once(self.last_error + " Details: " + " | ".join(failure_messages))
-            return self._simulate(len(channels))
+            return [None] * len(channels)
 
         except Exception as e:
             self.last_error = f"Error reading channels: {e}"
             self._log_once(self.last_error)
-            if not self.ever_had_real_data:
-                self.simulation_mode = True
-                return self._simulate(len(channels))
-            self.simulation_mode = False
             return [None] * len(channels)
 
     def read_single_channel(self, channel=0):
@@ -248,7 +226,7 @@ class MCCThermocouple:
         for i, value in enumerate(temps):
             print(f"Channel {i}: {value if value is not None else 'Open/Unavailable'}")
 
-        print("Currently using simulated data" if self.simulation_mode else "Hardware test complete")
+        print("Hardware test complete")
         self.disconnect()
         return True
 
