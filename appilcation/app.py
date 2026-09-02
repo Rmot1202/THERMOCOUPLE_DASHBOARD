@@ -195,7 +195,7 @@ def make_figure(store, cfg):
     fig.add_hline(y=cfg["lower_bound"], line_dash="dot", line_color="#f59e0b", line_width=1)
     fig.add_hline(y=cfg["upper_bound"], line_dash="dot", line_color="#8b5cf6", line_width=1)
     fig.update_layout(
-        height=GRAPH_HEIGHT,
+        autosize=True,
         margin=dict(l=8, r=8, t=24, b=8),
         template="plotly_white",
         paper_bgcolor="white",
@@ -399,6 +399,7 @@ app.layout = html.Div(
                                     id="live-graph",
                                     figure=make_figure({"times": [], "ch0": [], "ch1": [], "ch2": []}, loaded_cfg),
                                     config={"displayModeBar": False, "responsive": True},
+                                    style={"height": "100%"},
                                     className="live-graph",
                                 ),
                                 html.Div(
