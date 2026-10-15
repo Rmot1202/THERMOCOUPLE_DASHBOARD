@@ -153,22 +153,73 @@ def test_disconnect_clears_connection(monkeypatch):
     assert device.connected is False
 
 
-def test_connect_fails_fast_when_network_device_is_unreachable(monkeypatch):
-    """An offline DAQ should not let the uldaq descriptor lookup block startup."""
+def test_connect_uses_vendor_descriptor_without_raw_socket_probe(monkeypatch):
+    """Connection should follow the same direct uldaq path as t_in.py."""
 
-    hardware = _reload_hardware_with_fake_uldaq(monkeypatch)
+    descriptor_calls = []
 
-    def fake_create_connection(*args, **kwargs):
-        raise TimeoutError("timed out")
+    def fail_descriptor_lookup(*args):
+        descriptor_calls.append(args)
+        raise TimeoutError("DAQ unavailable")
 
-    monkeypatch.setattr(hardware.socket, "create_connection", fake_create_connection)
-
+    hardware = _reload_hardware_with_fake_uldaq(
+        monkeypatch,
+        descriptor_impl=fail_descriptor_lookup,
+    )
     device = hardware.MCCThermocouple(
         device_ip="169.254.69.179",
-        connection_timeout=0.01,
-        reconnect_interval=5.0,
+        interface_name="eth0",
+        port=54211,
     )
 
     assert device.connect() is False
+    assert descriptor_calls == [("169.254.69.179", 54211, "eth0")]
     assert device.connected is False
-    assert "not reachable" in device.last_error.lower()
+    assert "could not connect" in device.last_error.lower()
+
+
+def test_transport_read_failure_discards_connection_for_reconnect(monkeypatch):
+    """A stale network handle should be released so the next poll can reconnect."""
+
+    hardware = _reload_hardware_with_fake_uldaq(monkeypatch)
+    hardware.ul.ULError = types.SimpleNamespace(
+        OPEN_CONNECTION=85,
+        NET_CONNECTION_FAILED=98,
+        NET_TIMEOUT=103,
+        DATA_SOCKET_CONNECTION_FAILED=104,
+    )
+
+    class FakeTransportError(RuntimeError):
+        def __init__(self, message):
+            super().__init__(message)
+            self.error_code = hardware.ul.ULError.NET_TIMEOUT
+
+    class FakeDevice:
+        def __init__(self):
+            self.disconnected = False
+            self.released = False
+
+        def is_connected(self):
+            return True
+
+        def disconnect(self):
+            self.disconnected = True
+
+        def release(self):
+            self.released = True
+
+    def fail_read(channel, scale):
+        raise FakeTransportError("DAQ read timed out")
+
+    daq_device = FakeDevice()
+    device = hardware.MCCThermocouple()
+    device.connected = True
+    device.device = daq_device
+    device.ai_device = types.SimpleNamespace(t_in=fail_read)
+
+    assert device.read_channels([0]) == [None]
+    assert device.connected is False
+    assert device.device is None
+    assert device.ai_device is None
+    assert daq_device.disconnected is True
+    assert daq_device.released is True

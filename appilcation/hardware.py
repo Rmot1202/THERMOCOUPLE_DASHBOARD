@@ -1,4 +1,3 @@
-import socket
 import time
 
 try:
@@ -66,18 +65,6 @@ class MCCThermocouple:
             return True
         return (time.time() - self._last_connect_attempt_ts) >= self.reconnect_interval
 
-    def _network_device_reachable(self):
-        if not self.device_ip:
-            return True
-
-        try:
-            with socket.create_connection((self.device_ip, self.port), timeout=self.connection_timeout):
-                return True
-        except OSError as error:
-            self.last_error = f"DAQ is not reachable at {self.device_ip}:{self.port}: {error}"
-            self._log_once(self.last_error)
-            return False
-
     def connect(self):
         if ul is None:
             self.connected = False
@@ -99,9 +86,6 @@ class MCCThermocouple:
         self._last_connect_attempt_ts = time.time()
 
         try:
-            if not self._network_device_reachable():
-                return False
-
             desc = ul.get_net_daq_device_descriptor(
                 self.device_ip,
                 self.port,
@@ -135,30 +119,43 @@ class MCCThermocouple:
         except Exception as e:
             self.last_error = f"Could not connect to MCC device: {e}"
             self._log_once(self.last_error)
-            self.connected = False
-            try:
-                if self.device is not None:
-                    self.device.release()
-            except Exception:
-                pass
-            self.device = None
-            self.ai_device = None
+            self._discard_connection()
             return False
 
-    def disconnect(self):
-        try:
-            if self.device is not None and self.device.is_connected():
-                self.device.disconnect()
-            if self.device is not None:
-                self.device.release()
-        except Exception:
-            pass
-
+    def _discard_connection(self):
+        device = self.device
         self.device = None
         self.ai_device = None
         self.connected = False
+        try:
+            if device is not None and device.is_connected():
+                device.disconnect()
+        except Exception:
+            pass
+        try:
+            if device is not None:
+                device.release()
+        except Exception:
+            pass
+
+    def disconnect(self):
+        self._discard_connection()
+
         self._log_once("Disconnected from MCC device")
         return True
+
+    def _is_transport_error(self, error):
+        error_codes = getattr(self.ul, "ULError", None)
+        error_code = getattr(error, "error_code", None)
+        transport_codes = (
+            "NET_CONNECTION_FAILED",
+            "NET_TIMEOUT",
+            "DATA_SOCKET_CONNECTION_FAILED",
+        )
+        return any(
+            error_code == getattr(error_codes, name, object())
+            for name in transport_codes
+        )
 
     def set_thermocouple_type(self, type_name):
         """Apply a thermocouple type to every configured analog channel."""
@@ -209,11 +206,13 @@ class MCCThermocouple:
             readings = []
             failures = 0
             failure_messages = []
+            transport_failed = False
 
             for ch in channels:
                 try:
                     readings.append(self._read_hardware_channel(ch))
                 except _UL_EXCEPTION as ch_error:
+                    transport_failed = transport_failed or self._is_transport_error(ch_error)
                     if ch_error.error_code == ul.ULError.OPEN_CONNECTION:
                         readings.append(None)
                         failures += 1
@@ -223,9 +222,13 @@ class MCCThermocouple:
                         failures += 1
                         failure_messages.append(f"ch{ch}: {ch_error}")
                 except Exception as ch_error:
+                    transport_failed = transport_failed or self._is_transport_error(ch_error)
                     readings.append(None)
                     failures += 1
                     failure_messages.append(f"ch{ch}: {ch_error}")
+
+            if transport_failed:
+                self._discard_connection()
 
             if any(v is not None for v in readings):
                 self._mark_real_data()
