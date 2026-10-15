@@ -58,7 +58,7 @@ jobs:
   deploy:
     name: Deploy to Camp-U24-Pi5
     needs: test
-    runs-on: [self-hosted, linux, ARM64, live-mcc]
+    runs-on:  ubuntu-latest
     timeout-minutes: 10
     env:
       DASHBOARD_URL: https://10.0.20.21/
