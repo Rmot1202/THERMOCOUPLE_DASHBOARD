@@ -61,7 +61,7 @@ Thermocouple_dashboard/
 
 ### Local Development
 
-Create and activate a virtual environment, then install dependencies:
+Create and activate a virtual environment, then install dependencies
 
 ```bash
 python -m venv venv
